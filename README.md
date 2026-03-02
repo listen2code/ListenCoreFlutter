@@ -1,39 +1,66 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# listen_core
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+A robust core library for Flutter applications, providing essential architecture components, network utilities, and shared services.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- **Base Architecture**: standard `BaseLifecyclePage` and `BaseProvider` for consistent state management.
+- **Enhanced Logging**: Integrated `LogManager` and `Logger` for structured console output and trace tracking.
+- **Global Error Handling**: `CrashManager` and `ZoneManager` to catch and report unhandled exceptions.
+- **Local Storage**: Simple wrappers for `SharedPreferences` (`SpUtil`) and `FlutterSecureStorage` (`SecureStorageUtil`).
+- **Network Tools**:
+  - `NetworkInfo` for connectivity checks.
+  - `LocalMockServer`: A built-in HTTP server to simulate API responses using local assets during development.
+- **Extensions**: Useful `Ref` extensions for Riverpod.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add `listen_core` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  listen_core:
+    git:
+      url: https://github.com/listen2code/ListenCoreFlutter.git
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+### 1. Initialization
+
+Initialize the core utilities in your `main()`:
 
 ```dart
-const like = 'sample';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize storage
+  await SpUtil.init();
+  await SecureStorageUtil.init();
+  
+  // Start mock server if in debug mode
+  if (kDebugMode) {
+    await LocalMockServer.start();
+  }
+
+  runApp(const ProviderScope(child: MyApp()));
+}
 ```
+
+### 2. Using Local Storage
+
+```dart
+// Save data
+await SpUtil.put('user_token', 'abc_123');
+
+// Get data
+String? token = SpUtil.getString('user_token');
+```
+
+### 3. Mock Server
+
+`LocalMockServer` allows you to point your API base URL to `http://localhost:9999` and serve JSON files from your `assets/mock` directory. It matches paths based on method and version (e.g., `assets/mock/v1/get/user.json`).
 
 ## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+For more details on contribution or reporting issues, please visit the [repository](https://github.com/listen2code/ListenCoreFlutter).
