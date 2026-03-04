@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:listen_portfolio_flutter/core/core.dart';
+import '../core.dart';
 
 /// A customized [MaterialApp] that automatically integrates the Core framework's
 /// navigation system (AppNav) and Zone-based performance tracking.

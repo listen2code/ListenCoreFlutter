@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart' hide RoutePageBuilder;
-import 'package:listen_portfolio_flutter/core/core.dart';
+import 'core.dart';
 
 /// Configuration class for Core module initialization.
 class CoreConfig {

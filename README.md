@@ -1,19 +1,38 @@
-# listen_core
+# Listen Core
 
-A robust core library for Flutter applications, providing essential architecture components, network utilities, and shared services.
+A professional, high-performance core architecture framework for Flutter applications. Designed to provide a unified foundation for enterprise-level development with a focus on lifecycle management, robust networking, and structured logging.
 
-## Features
+## 🚀 Features
 
-- **Base Architecture**: standard `BaseLifecyclePage` and `BaseProvider` for consistent state management.
-- **Enhanced Logging**: Integrated `LogManager` and `Logger` for structured console output and trace tracking.
-- **Global Error Handling**: `CrashManager` and `ZoneManager` to catch and report unhandled exceptions.
-- **Local Storage**: Simple wrappers for `SharedPreferences` (`SpUtil`) and `FlutterSecureStorage` (`SecureStorageUtil`).
-- **Network Tools**:
-  - `NetworkInfo` for connectivity checks.
-  - `LocalMockServer`: A built-in HTTP server to simulate API responses using local assets during development.
-- **Extensions**: Useful `Ref` extensions for Riverpod.
+### 🏗 Architecture & Lifecycle
+- **BaseLifeCyclePage**: A unified page wrapper that handles:
+  - Automatic `onInit`, `onReady`, `onResume`, `onPause`, `onVisible`, `onInVisible` lifecycle callbacks.
+  - Built-in **Loading** and **Empty** state management with custom UI support.
+  - **Safety Timer** to prevent permanent loading UI locks.
+  - Automatic request cancellation on back navigation.
+- **BaseMaterialApp**: A drop-in replacement for `MaterialApp` that pre-configures:
+  - Global `NavigatorKey` for contextless navigation.
+  - `RouteObserver` for page tracking.
+  - Performance monitoring via `ZoneManager`.
 
-## Getting started
+### 🌐 Networking & Mocking
+- **LocalMockServer**: An in-app HTTP server (port 9999) that maps API requests to local JSON assets.
+  - Supports versioning (e.g., `/v1/get/user` -> `assets/mock/v1/get/user.json`).
+  - Simulates network latency and logs request/response bodies.
+- **UseCase Pattern**: Standardized functional error handling using `fpdart`'s `Either<Failure, T>`.
+- **NetworkInfo**: Real-time connectivity monitoring.
+
+### 📝 Logging & Diagnostics
+- **ZoneManager**: Captures unhandled exceptions and tracks execution performance across async boundaries.
+- **AppLogger**: Structured logging with severity levels, JSON formatting, and `X-Trace-Id` correlation for distributed tracing.
+- **CrashManager**: Centralized error reporting and crash analysis.
+
+### 💾 Storage & Utilities
+- **SpUtil**: Synchronous-access wrapper for `SharedPreferences` with JSON support.
+- **SecureStorageUtil**: Encrypted storage for sensitive data (Tokens, Keys).
+- **Device & Package Info**: Quick access to device hardware and app version details.
+
+## 📦 Getting Started
 
 Add `listen_core` to your `pubspec.yaml`:
 
@@ -24,43 +43,66 @@ dependencies:
       url: https://github.com/listen2code/ListenCoreFlutter.git
 ```
 
-## Usage
+## 🛠 Usage
 
-### 1. Initialization
-
-Initialize the core utilities in your `main()`:
+### 1. Global Initialization
 
 ```dart
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize storage
-  await SpUtil.init();
-  await SecureStorageUtil.init();
-  
-  // Start mock server if in debug mode
-  if (kDebugMode) {
-    await LocalMockServer.start();
-  }
+  // 1. Wrap the entire app in a performance & error tracking Zone
+  ZoneManager.run(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // 2. Initialize essential services
+    await SpUtil.init();
+    await SecureStorageUtil.init();
+    
+    // 3. Start Mock Server in Debug Mode
+    if (kDebugMode) {
+      await LocalMockServer.start();
+    }
 
-  runApp(const ProviderScope(child: MyApp()));
+    runApp(const ProviderScope(child: MyApp()));
+  });
 }
 ```
 
-### 2. Using Local Storage
+### 2. Standardized Page Development
+
+Inherit your UI from `BaseLifeCyclePage` to get automatic lifecycle and state handling:
 
 ```dart
-// Save data
-await SpUtil.put('user_token', 'abc_123');
-
-// Get data
-String? token = SpUtil.getString('user_token');
+class MyPage extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewModel = ref.watch(myViewModelProvider);
+    
+    return BaseLifeCyclePage(
+      title: 'My Profile',
+      viewModel: viewModel,
+      onLoading: const MySkeletonLoader(), // Automatic loading UI
+      body: (context, child) => ListView(
+        children: [ ... ],
+      ),
+    );
+  }
+}
 ```
 
-### 3. Mock Server
+### 3. Functional UseCases
 
-`LocalMockServer` allows you to point your API base URL to `http://localhost:9999` and serve JSON files from your `assets/mock` directory. It matches paths based on method and version (e.g., `assets/mock/v1/get/user.json`).
+```dart
+class GetUserUseCase extends UseCase<User, String> {
+  @override
+  Future<Either<Failure, User>> call(String userId) async {
+    // Business logic here...
+  }
+}
+```
 
-## Additional information
+## 🛠 Requirements
+- Flutter: `>=3.10.1`
+- Dart: `^3.10.1`
 
-For more details on contribution or reporting issues, please visit the [repository](https://github.com/listen2code/ListenCoreFlutter).
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
