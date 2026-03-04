@@ -1,6 +1,6 @@
 name: listen_core
 description: "Core of Flutter Architecture"
-version: 0.0.1
+version: 0.0.2
 repository: https://github.com/listen2code/ListenCoreFlutter
 
 environment:
@@ -20,6 +20,8 @@ dependencies:
   logger: ^2.6.2
   shared_preferences: ^2.5.4
   flutter_secure_storage: ^10.0.0
+  device_info_plus: ^12.3.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:

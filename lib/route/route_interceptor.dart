@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core.dart';
 
-
 abstract class _RouteInterceptor {
   /// Priority of the interceptor. Lower value means higher priority.
   int? priority;

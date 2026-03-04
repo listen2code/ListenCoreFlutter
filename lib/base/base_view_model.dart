@@ -10,7 +10,9 @@ abstract class BaseState {
   const BaseState();
 }
 
-abstract class BaseIntent {}
+abstract class BaseIntent {
+  const BaseIntent();
+}
 
 /// Interface for any object that maintains a reactive state.
 abstract class IStateOwner<S> {
@@ -60,6 +62,9 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   final _effectController = StreamController<BaseEffect>.broadcast();
   CancelToken _cancelToken = CancelToken();
 
+  /// Internal list to manage event bus subscriptions and ensure they are disposed.
+  final List<StreamSubscription> _eventSubscriptions = [];
+
   @override
   Stream<BaseEffect> get effectStream => _effectController.stream;
 
@@ -68,6 +73,22 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
       _cancelToken = CancelToken();
     }
     return _cancelToken;
+  }
+
+  /// Subscribes to an event from the [EventBus] and manages its lifecycle.
+  /// [key]: Optional filter to listen only for events with a specific key.
+  /// [sticky]: If true, it will emit the matching cached event immediately upon subscription.
+  /// [where]: Additional custom filtering logic.
+  /// The subscription will be automatically cancelled in [onDispose].
+  @protected
+  void subscribeEvent<T extends BaseEvent>(
+    void Function(T event) onData, {
+    String? key,
+    bool sticky = false,
+    bool Function(T event)? where,
+  }) {
+    final sub = eventBus.on<T>(onData, key: key, sticky: sticky, where: where);
+    _eventSubscriptions.add(sub);
   }
 
   /// Centralized state update method.
@@ -103,8 +124,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     return dispatch(intent, () => onIntent(intent), useZone: useZone);
   }
 
-  /// Subclasses can override this to disable Zone creation for high-frequency intents
-  /// (e.g., scroll, drag, or continuous animation updates).
+  /// Subclasses can override this to disable Zone creation for high-frequency intents.
   @protected
   bool shouldUseZone(I intent) => true;
 
@@ -210,9 +230,17 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   void onInactive() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInactive');
 
   @override
+  @mustCallSuper
   void onDispose() {
     appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onDispose');
     cancelRequests('${runtimeType.toString()} disposed');
+
+    // Automatically cancel all event bus subscriptions to prevent memory leaks.
+    for (var sub in _eventSubscriptions) {
+      sub.cancel();
+    }
+    _eventSubscriptions.clear();
+
     _effectController.close();
   }
 
@@ -220,7 +248,6 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @protected
   Future<void> dispatch(dynamic intent, FutureOr<void> Function() handler, {bool useZone = true}) {
     if (!useZone) {
-      // Fast Path: Bypass Zone creation for high-frequency events.
       try {
         final result = handler();
         if (result is Future) return result;

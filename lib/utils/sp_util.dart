@@ -29,7 +29,7 @@ class SpUtil {
   static String _getKey(String key) => '$_prefix$key';
 
   /// Save a value by key.
-  /// Supports String, bool, int, double, `List<String>`, and Map/Object (via JSON).
+  /// Supports String, bool, int, double, List<String>, and Map/Object (via JSON).
   static Future<bool> put(String key, dynamic value) async {
     final prefs = await _instance;
     final fullKey = _getKey(key);

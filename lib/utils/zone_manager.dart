@@ -94,8 +94,8 @@ class ZoneManager {
   /// Runs the [body] in a protected Zone that catches unhandled asynchronous errors.
   static Future<void> runGuarded(
     FutureOr<void> Function() body, {
-    String? traceId,
-    String? label,
+    String? traceId = mainTraceId,
+    String? label = mainStart,
     CancelToken? cancelToken,
     Map<Object?, Object?>? zoneValues,
     void Function(Object error, StackTrace stack)? onError,

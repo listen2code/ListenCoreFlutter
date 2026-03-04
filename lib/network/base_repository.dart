@@ -17,7 +17,6 @@ mixin BaseRepository {
       if (response.result == ApiResult.success) {
         return Right(response.body as T);
       } else if (response.result == ApiResult.sessionTimeout) {
-        // TODO: Handle global session timeout (e.g., emit logout event or navigate to login)
         return Left(AuthFailure(response.message ?? 'Session expired'));
       } else if (response.result == ApiResult.serverError) {
         return Left(ServerApiFailure(response.message ?? 'Server API Error'));

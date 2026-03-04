@@ -45,6 +45,13 @@ class BaseLifeCyclePage extends StatefulWidget {
   /// Optional callback to handle custom UI effects.
   final void Function(BaseEffect effect)? onEffect;
 
+  /// A widget to display when the page is in a loading state (e.g., a Skeleton screen).
+  /// If provided, it will automatically replace the body when the page is loading.
+  final Widget? onLoading;
+
+  /// A widget to display when the page is in an empty state.
+  final Widget? onEmpty;
+
   const BaseLifeCyclePage({
     super.key,
     required this.body,
@@ -69,6 +76,8 @@ class BaseLifeCyclePage extends StatefulWidget {
     this.onInterceptBack,
     this.viewModel,
     this.onEffect,
+    this.onLoading,
+    this.onEmpty,
   });
 
   @override
@@ -82,6 +91,8 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 
   // Local state to track loading based on Effects, used for canPop logic.
   final ValueNotifier<bool> _isInternalLoading = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isInternalEmpty = ValueNotifier<bool>(false);
+
   Timer? _loadingSafetyTimer;
 
   late final _RouteAwareProxy _routeObserver;
@@ -138,6 +149,8 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     // Synchronize local loading state if a LoadingEffect is received.
     if (effect is LoadingEffect) {
       _updateLoadingState(effect.show);
+    } else if (effect is EmptyEffect) {
+      _isInternalEmpty.value = effect.show;
     }
 
     // Delegate standard effect handling to the ViewModel's mixin logic
@@ -150,6 +163,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   }
 
   void _updateLoadingState(bool show) {
+    if (_isInternalLoading.value == show) return;
     _isInternalLoading.value = show;
     _loadingSafetyTimer?.cancel();
 
@@ -186,6 +200,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     _loadingSafetyTimer?.cancel();
     _effectSubscription?.cancel();
     _isInternalLoading.dispose();
+    _isInternalEmpty.dispose();
     AppNav.observer.unsubscribe(_routeObserver);
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     _viewModel?.onDispose();
@@ -203,10 +218,22 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _isInternalLoading,
+      listenable: Listenable.merge([_isInternalLoading, _isInternalEmpty]),
       builder: (context, child) {
-        // Effective canPop: user's canPop (default true) and not loading
         final effectiveCanPop = (widget.canPop ?? true) && !_isInternalLoading.value;
+
+        // Content Switching Logic:
+        // 1. Loading (Priority 1)
+        // 2. Empty (Priority 2)
+        // 3. Normal Body (Default)
+        Widget content;
+        if (_isInternalLoading.value && widget.onLoading != null) {
+          content = widget.onLoading!;
+        } else if (_isInternalEmpty.value && widget.onEmpty != null) {
+          content = widget.onEmpty!;
+        } else {
+          content = widget.body(context, child);
+        }
 
         return BaseScaffoldPage(
           title: widget.title,
@@ -235,7 +262,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
               _viewModel?.emitEffect(LoadingEffect(false));
             }
           },
-          child: widget.body(context, child),
+          child: content,
         );
       },
     );

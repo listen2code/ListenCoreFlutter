@@ -38,6 +38,19 @@ class LoadingEffect extends BaseEffect {
   }
 }
 
+/// Standard Effect for controlling the display of an empty state placeholder.
+class EmptyEffect extends BaseEffect {
+  final bool show;
+  final String? message;
+
+  EmptyEffect(this.show, {this.message});
+
+  @override
+  String toString() {
+    return "EmptyEffect(show: $show, message: $message)";
+  }
+}
+
 /// Standard Effect for navigating to a new target reactively.
 class NavigationEffect extends BaseEffect {
   /// The navigation target (Route path or Object). Can be null for back operations.
