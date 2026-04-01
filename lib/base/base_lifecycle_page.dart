@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import '../core.dart';
 
@@ -42,6 +43,9 @@ class BaseLifeCyclePage extends StatefulWidget {
   /// Explicitly provided ViewModel instance.
   final BaseViewModel? viewModel;
 
+  /// Optional UI-layer lifecycle listener.
+  final PageLifecycle? lifecycle;
+
   /// Optional callback to handle custom UI effects.
   final void Function(BaseEffect effect)? onEffect;
 
@@ -51,6 +55,14 @@ class BaseLifeCyclePage extends StatefulWidget {
 
   /// A widget to display when the page is in an empty state.
   final Widget? onEmpty;
+
+  /// Whether to wrap the content in a [BaseScaffoldPage].
+  /// Set to false when using this as a sub-page/tab within another page.
+  final bool useScaffold;
+
+  /// Whether to enable viewport visibility detection (onViewVisible/onViewInVisible).
+  /// Disable this for simple static pages to improve performance.
+  final bool useVisibilityDetector;
 
   const BaseLifeCyclePage({
     super.key,
@@ -75,9 +87,12 @@ class BaseLifeCyclePage extends StatefulWidget {
     this.loadingTimeout = const Duration(seconds: 10),
     this.onInterceptBack,
     this.viewModel,
+    this.lifecycle,
     this.onEffect,
     this.onLoading,
     this.onEmpty,
+    this.useScaffold = true,
+    this.useVisibilityDetector = true,
   });
 
   @override
@@ -86,8 +101,13 @@ class BaseLifeCyclePage extends StatefulWidget {
 
 class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   bool _isRouteVisible = false;
+  bool _isActuallyVisible = false; // Tracks (Route Visible && widget.active)
+  bool _isViewVisible = false; // Tracks physical visibility in viewport
+  bool _isReady = false; // Tracks if onReady has been called
   BaseViewModel? _viewModel;
-  StreamSubscription<BaseEffect>? _effectSubscription;
+
+  // Added to track state transitions for filtering onInactive calls.
+  AppLifecycleState? _lastAppState;
 
   // Local state to track loading based on Effects, used for canPop logic.
   final ValueNotifier<bool> _isInternalLoading = ValueNotifier<bool>(false);
@@ -102,45 +122,94 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   void initState() {
     super.initState();
 
+    // Initialize the last known app state.
+    _lastAppState = WidgetsBinding.instance.lifecycleState;
+
     // Directly use the provided viewModel instance
     _viewModel = widget.viewModel;
 
-    // Subscribe to Effects (Toast, Loading, Navigation, etc.)
+    // Bind effects: ViewModel manages the subscription lifecycle internally.
     if (_viewModel != null) {
-      _effectSubscription = _viewModel!.effectStream.listen(_handleEffect);
+      _viewModel!.onBindEffect(_handleEffect);
     }
 
-    // Initialize Observers
     _routeObserver = _RouteAwareProxy(
-      onVisible: () => _checkVisibilityChange(true),
-      onInVisible: () => _checkVisibilityChange(false),
-      onPush: () => _isRouteVisible = true,
+      onVisible: () {
+        _isRouteVisible = true;
+        _evaluateVisibility();
+      },
+      onInVisible: () {
+        _isRouteVisible = false;
+        _evaluateVisibility();
+      },
     );
 
     _lifecycleObserver = _AppLifecycleProxy(
       onStateChanged: (state) {
-        if (!_isRouteVisible || !widget.active) return;
+        // Strict visibility check before triggering lifecycle
+        if (!_isActuallyVisible) return;
 
         if (state == AppLifecycleState.resumed) {
-          _viewModel?.onResume();
+          _trigger((l) => l.onResume());
         } else if (state == AppLifecycleState.paused) {
-          _viewModel?.onPause();
+          _trigger((l) => l.onPause());
         } else if (state == AppLifecycleState.inactive) {
-          _viewModel?.onInactive();
+          // Trigger onInactive ONLY when moving from resumed (going towards background/loss of focus).
+          // Skip when moving from paused (coming back to foreground).
+          if (_lastAppState == AppLifecycleState.resumed) {
+            _trigger((l) => l.onInactive());
+          }
         }
+        _lastAppState = state;
       },
     );
 
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
 
-    _viewModel?.onInit();
+    _trigger((l) => l.onInit());
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _viewModel?.onReady();
-        if (widget.active) _checkVisibilityChange(true);
+        _trigger((l) => l.onReady());
+        _isReady = true;
+        _evaluateVisibility();
       }
     });
+  }
+
+  /// Helper to dispatch lifecycle events to both ViewModel and widget.lifecycle.
+  void _trigger(void Function(PageLifecycle lifecycle) action) {
+    if (_viewModel != null) action(_viewModel!);
+    if (widget.lifecycle != null) action(widget.lifecycle!);
+  }
+
+  /// Evaluates and triggers ViewModel lifecycle methods based on the current
+  /// combination of Route visibility and the [widget.active] flag.
+  void _evaluateVisibility() {
+    // Block onVisible until the component is ready (onReady called)
+    if (!_isReady) return;
+
+    final bool currentlyVisible = _isRouteVisible && widget.active;
+    if (currentlyVisible != _isActuallyVisible) {
+      _isActuallyVisible = currentlyVisible;
+      if (_isActuallyVisible) {
+        _trigger((l) => l.onVisible());
+      } else {
+        _trigger((l) => l.onInVisible());
+      }
+    }
+  }
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final bool currentlyVisible = info.visibleFraction > 0;
+    if (currentlyVisible != _isViewVisible) {
+      _isViewVisible = currentlyVisible;
+      if (_isViewVisible) {
+        _trigger((l) => l.onViewVisible());
+      } else {
+        _trigger((l) => l.onViewInVisible());
+      }
+    }
   }
 
   void _handleEffect(BaseEffect effect) {
@@ -157,16 +226,13 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     final handled = _viewModel?.handleEffect(effect) ?? false;
 
     // If not handled by the framework (standard effects), pass it to the specific page logic
-    if (!handled) {
-      widget.onEffect?.call(effect);
-    }
+    if (!handled) widget.onEffect?.call(effect);
   }
 
   void _updateLoadingState(bool show) {
     if (_isInternalLoading.value == show) return;
     _isInternalLoading.value = show;
     _loadingSafetyTimer?.cancel();
-
     if (show) {
       // Robustness: Start a safety timer to prevent UI from being permanently locked
       _loadingSafetyTimer = Timer(widget.loadingTimeout, () {
@@ -184,6 +250,8 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     final route = ModalRoute.of(context);
     if (route is PageRoute) {
       AppNav.observer.subscribe(_routeObserver, route);
+      // Initialize the correct visibility state: if the route is not current, it's covered.
+      _isRouteVisible = route.isCurrent;
     }
   }
 
@@ -191,28 +259,19 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   void didUpdateWidget(BaseLifeCyclePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.active != widget.active) {
-      _checkVisibilityChange(widget.active);
+      _evaluateVisibility();
     }
   }
 
   @override
   void dispose() {
     _loadingSafetyTimer?.cancel();
-    _effectSubscription?.cancel();
     _isInternalLoading.dispose();
     _isInternalEmpty.dispose();
     AppNav.observer.unsubscribe(_routeObserver);
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
-    _viewModel?.onDispose();
+    _trigger((l) => l.onDispose());
     super.dispose();
-  }
-
-  void _checkVisibilityChange(bool isVisible) {
-    if (isVisible) {
-      _viewModel?.onVisible();
-    } else {
-      _viewModel?.onInVisible();
-    }
   }
 
   @override
@@ -220,20 +279,38 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     return ListenableBuilder(
       listenable: Listenable.merge([_isInternalLoading, _isInternalEmpty]),
       builder: (context, child) {
-        final effectiveCanPop = (widget.canPop ?? true) && !_isInternalLoading.value;
+        // Use a Stack instead of conditional returning to keep the 'body'
+        // widget tree (and its ViewModel state) alive during loading toggles.
+        Widget content = Stack(
+          fit: StackFit.expand, // Ensures the stack (and Positioned.fill children) fill available space.
+          children: [
+            // Normal content is always present to preserve State/ViewModel continuity.
+            widget.body(context, child),
 
-        // Content Switching Logic:
-        // 1. Loading (Priority 1)
-        // 2. Empty (Priority 2)
-        // 3. Normal Body (Default)
-        Widget content;
-        if (_isInternalLoading.value && widget.onLoading != null) {
-          content = widget.onLoading!;
-        } else if (_isInternalEmpty.value && widget.onEmpty != null) {
-          content = widget.onEmpty!;
-        } else {
-          content = widget.body(context, child);
+            // Loading Overlay (e.g., Skeleton)
+            if (_isInternalLoading.value && widget.onLoading != null)
+              Positioned.fill(
+                child: ColoredBox(color: Theme.of(context).scaffoldBackgroundColor, child: widget.onLoading!),
+              ),
+
+            // Empty State Overlay
+            if (!_isInternalLoading.value && _isInternalEmpty.value && widget.onEmpty != null)
+              Positioned.fill(
+                child: ColoredBox(color: Theme.of(context).scaffoldBackgroundColor, child: widget.onEmpty!),
+              ),
+          ],
+        );
+
+        if (widget.useVisibilityDetector) {
+          content = VisibilityDetector(
+            // FIX: Use a stable key that doesn't depend on title to prevent rebuilds on title changes.
+            key: ValueKey('visibility-${_viewModel?.runtimeType ?? runtimeType}'),
+            onVisibilityChanged: _onVisibilityChanged,
+            child: content,
+          );
         }
+
+        if (!widget.useScaffold) return content;
 
         return BaseScaffoldPage(
           title: widget.title,
@@ -251,13 +328,13 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
           statusBarColor: widget.statusBarColor,
           bottomBarColor: widget.bottomBarColor,
           useGradientBackground: widget.useGradientBackground,
-          canPop: effectiveCanPop,
+          canPop: (widget.canPop ?? true) && !_isInternalLoading.value,
           onBackInvoked: () {
             // Priority given to custom interception logic
             if (widget.onInterceptBack != null) {
               widget.onInterceptBack!();
             } else {
-              _viewModel?.cancelRequests("on BackInvoked");
+              _viewModel?.cancelRequests("onBackInvoked");
               // Loading is managed via effects to keep local _isInternalLoading in sync.
               _viewModel?.emitEffect(LoadingEffect(false));
             }
@@ -273,13 +350,12 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 class _RouteAwareProxy extends RouteAware {
   final VoidCallback onVisible;
   final VoidCallback onInVisible;
-  final VoidCallback onPush;
 
-  _RouteAwareProxy({required this.onVisible, required this.onInVisible, required this.onPush});
+  _RouteAwareProxy({required this.onVisible, required this.onInVisible});
 
   @override
   /// Called when the current route has been pushed.
-  void didPush() => onPush();
+  void didPush() => onVisible();
 
   @override
   /// Called when the top route has been popped off, and the current route shows up.

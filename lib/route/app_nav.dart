@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
 import '../core.dart';
 
 /// Builder function to create a page for a specific route path.
@@ -113,20 +114,38 @@ class AppNav {
   }
 
   /// Navigates to a target and removes all previous routes from the stack.
-  static Future<T?>? offAll<T>(dynamic target, {bool needLogin = false, Object? arguments}) {
+  /// If [isReplace] is true, creates a new route and replaces the entire stack.
+  /// If [isReplace] is false, pops until the target route is reached (target must exist in stack).
+  static Future<T?>? offAll<T>(
+    dynamic target, {
+    bool needLogin = false,
+    bool isReplace = true,
+    Object? arguments,
+  }) {
     final completer = Completer<T?>();
 
     tryLogin(
       needLogin: needLogin,
       onSuccess: () {
-        final Route<T>? route = _resolveRoute<T>(target, arguments);
-        if (route == null) {
+        if (isReplace) {
+          // Create new route and replace entire stack
+          final Route<T>? route = _resolveRoute<T>(target, arguments);
+          if (route == null) {
+            completer.complete(null);
+            return;
+          }
+          AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
+            completer.complete(value);
+          });
+        } else {
+          // Pop until target route (must be a String route name)
+          if (target is String) {
+            AppNavConfig.navigatorKey.currentState?.popUntil((route) {
+              return route.settings.name == target;
+            });
+          }
           completer.complete(null);
-          return;
         }
-        AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
-          completer.complete(value);
-        });
       },
       onFail: () => completer.complete(null),
     );

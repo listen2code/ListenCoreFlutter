@@ -2,13 +2,36 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+
 import '../core.dart';
 
 /// A lightweight HTTP server running inside the app to provide real network responses.
 /// Path resolution logic is synchronized with tools/api/api.js structure.
 class LocalMockServer {
   static HttpServer? _server;
-  static const int port = 9999;
+  static int port = 9999;
+
+  // Supported image extensions and their corresponding ContentTypes
+  static Map<String, String> _imageExtensions = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+  };
+
+  // Configuration
+  static Duration _networkLatency = const Duration(seconds: 1);
+  static String _assetsBasePath = 'assets/mock';
+
+  /// Initialize configuration
+  static void initConfig(MockServerConfig config) {
+    port = config.port;
+    _imageExtensions = config.imageExtensions;
+    _networkLatency = config.networkLatency;
+    _assetsBasePath = config.assetsBasePath;
+  }
 
   /// Starts the server on localhost:9999
   static Future<void> start() async {
@@ -75,7 +98,37 @@ class LocalMockServer {
     appLogger.w(reqBuffer.toString().trim());
 
     // Simulate network latency
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(_networkLatency);
+
+    // --- ADDED: Handle Static Resources (Images) ---
+    if (uriPath.contains('/images/')) {
+      final ext = _imageExtensions.keys.firstWhere(
+        (e) => uriPath.toLowerCase().endsWith(e),
+        orElse: () => '',
+      );
+
+      if (ext.isNotEmpty) {
+        // Map URL: /v1/images/project1.jpg -> assets/mock/images/project1.jpg
+        // Stripping the version prefix if present to match the physical directory structure
+        final relativePath = uriPath.replaceFirst(RegExp(r'^/v\d+'), '');
+        final assetPath = '$_assetsBasePath$relativePath';
+
+        try {
+          final ByteData data = await rootBundle.load(assetPath);
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..headers.contentType = ContentType.parse(_imageExtensions[ext]!)
+            ..add(data.buffer.asUint8List());
+
+          appLogger.w('MockServer: <<< [200 OK] Returned Image: $assetPath');
+          await request.response.close();
+          return;
+        } catch (e) {
+          // If image not found in assets, we fall through to JSON resolution or 404 handler
+          appLogger.e('MockServer: Resource not found in assets: $assetPath');
+        }
+      }
+    }
 
     // 4. Identify version directory (e.g., v1)
     String versionDir = "";
@@ -86,22 +139,10 @@ class LocalMockServer {
 
     // 5. Build candidate asset paths matching api.js rules
     List<String> candidatePaths = [];
-    if (method == 'get') {
-      if (pathParts.length > 1) {
-        final resource = pathParts[0];
-        candidatePaths.add(_buildPath(versionDir, 'get', [resource]));
-        candidatePaths.add(_buildPath(versionDir, 'get', pathParts));
-      } else if (pathParts.length == 1) {
-        final resource = pathParts[0];
-        candidatePaths.add(_buildPath(versionDir, 'get/list', [resource]));
-        candidatePaths.add(_buildPath(versionDir, 'get', [resource]));
-      }
-    } else {
-      if (pathParts.length > 1) {
-        candidatePaths.add(_buildPath(versionDir, method, [pathParts[0]]));
-      }
-      candidatePaths.add(_buildPath(versionDir, method, pathParts));
+    if (pathParts.length > 1) {
+      candidatePaths.add(_buildPath(versionDir, method, [pathParts[0]]));
     }
+    candidatePaths.add(_buildPath(versionDir, method, pathParts));
 
     String? jsonData;
     String? matchedPath;
@@ -154,7 +195,7 @@ class LocalMockServer {
 
   /// Helper to join path segments safely
   static String _buildPath(String version, String method, List<String> parts) {
-    final segments = ['assets/mock', if (version.isNotEmpty) version, method, ...parts];
+    final segments = [_assetsBasePath, if (version.isNotEmpty) version, method, ...parts];
     return '${segments.join('/')}.json'.replaceAll('//', '/');
   }
 }

@@ -2,22 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+
 import '../core.dart';
 
 class HttpCode {
   HttpCode._();
-  static const int ok = 200;
-  static const int unauthorized = 401;
-  static const int forbidden = 403;
-  static const int internalServerError = 500;
-}
+  static int ok = 200;
+  static int unauthorized = 401;
+  static int forbidden = 403;
+  static int internalServerError = 500;
 
-class ApiResult {
-  ApiResult._();
-
-  static const String success = "0";
-  static const String serverError = "1";
-  static const String sessionTimeout = "3";
+  static void updateConfig(NetworkConfig config) {
+    ok = config.ok;
+    unauthorized = config.unauthorized;
+    forbidden = config.forbidden;
+    internalServerError = config.internalServerError;
+  }
 }
 
 /// Interface for delegating API request lifecycle logic to the shared layer.
@@ -50,13 +50,25 @@ class _DefaultApiDelegate implements IApiInterceptorDelegate {
 class ApiClient {
   ApiClient._();
 
+  /// Key to specify that a request does not require authentication.
+  /// Usage: dio.get(path, options: Options(extra: {ApiClient.kNoAuthKey: true}))
+  static const String kNoAuthKey = 'no_auth';
+
   static IApiInterceptorDelegate _delegate = _DefaultApiDelegate();
+  static NetworkConfig? _networkConfig;
 
   static IApiInterceptorDelegate get delegate => _delegate;
+  static NetworkConfig? get networkConfig => _networkConfig;
 
   /// Initializes the ApiClient with a concrete delegate implementation.
   static void init(IApiInterceptorDelegate delegate) {
     _delegate = delegate;
+  }
+
+  /// Initializes network configuration
+  static void initNetworkConfig(NetworkConfig config) {
+    _networkConfig = config;
+    HttpCode.updateConfig(config);
   }
 
   static final Dio _dio = _initDio();
@@ -74,8 +86,8 @@ class ApiClient {
     );
 
     // Order matters for logic flow:
-    // onRequest: runs in order added (Zone -> Error -> Logging -> Auth)
-    // onError: runs in REVERSE order (Auth -> Logging -> Error -> Zone)
+    // onRequest: runs in order added (Zone -> Error -> Auth -> Logging)
+    // onError: runs in REVERSE order (Logging -> Auth -> Error -> Zone)
     // This ensures:
     // 1. AuthInterceptor is the FIRST to handle onError, allowing it to retry before mapping to AppException.
     // 2. LoggingInterceptor records all attempts.
@@ -181,7 +193,12 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    await ApiClient.delegate.onInjectAuthHeader(options);
+    // Check if the request explicitly disables authentication.
+    final bool noAuth = options.extra[ApiClient.kNoAuthKey] == true;
+    final networkConfig = ApiClient.networkConfig;
+    if (!noAuth && networkConfig != null && !networkConfig.visitorPaths.contains(options.path)) {
+      await ApiClient.delegate.onInjectAuthHeader(options);
+    }
     handler.next(options);
   }
 
@@ -189,8 +206,10 @@ class _AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final is401 = err.response?.statusCode == HttpCode.unauthorized;
     final alreadyRefreshed = err.requestOptions.extra[_kIsRefreshedKey] == true;
+    final bool noAuth = err.requestOptions.extra[ApiClient.kNoAuthKey] == true;
 
-    if (is401 && !alreadyRefreshed) {
+    // Do not attempt token refresh if auth is disabled for this request.
+    if (is401 && !alreadyRefreshed && !noAuth) {
       appLogger.w('AuthInterceptor: [401] detected for ${err.requestOptions.path}');
 
       if (!_isRefreshing) {
@@ -276,7 +295,7 @@ class _ErrorInterceptor extends Interceptor {
         break;
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
-        final message = err.response?.data?[BaseResponseModel.kMessage] ?? err.message;
+        final message = err.response?.data?[BaseResponseModel.messageKey] ?? err.message;
         if (statusCode == HttpCode.unauthorized || statusCode == HttpCode.forbidden) {
           exception = AuthException(message ?? "", statusCode);
         } else if (statusCode != null && statusCode >= HttpCode.internalServerError) {
@@ -285,10 +304,16 @@ class _ErrorInterceptor extends Interceptor {
           exception = ServerException(message ?? "", statusCode);
         }
         break;
+      case DioExceptionType.badCertificate:
+        exception = NetworkException('Bad certificate');
+        break;
+      case DioExceptionType.connectionError:
+        exception = NetworkException('Connection error');
+        break;
       case DioExceptionType.cancel:
         exception = AppException('Request cancelled');
         break;
-      default:
+      case DioExceptionType.unknown:
         exception = ServerException(err.toString());
     }
 

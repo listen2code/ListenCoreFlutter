@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core.dart';
 
 /// A customized [MaterialApp] that automatically integrates the Core framework's

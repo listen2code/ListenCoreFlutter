@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
+import '../core.dart';
+
 enum LogLevel { debug, info, warning, error }
 
 class LogEntry {
@@ -15,18 +17,26 @@ class LogEntry {
 
 class LogManager {
   static final List<LogEntry> _logs = [];
-  static const int _maxLogs = 100;
+  static int _maxLogs = 100;
 
   // --- Constants for Log Filtering and Identification ---
-  static const String summaryTag = "Summary";
-  static const String mockServerTag = "MockServer";
-  static const String termTag = "Execution Terminated";
+  static String summaryTag = "Summary";
+  static String mockServerTag = "MockServer";
+  static String termTag = "Execution Terminated";
 
   // Private ValueNotifier to manage state internally
   static final ValueNotifier<List<LogEntry>> _logNotifier = ValueNotifier([]);
 
   // Public ValueListenable to allow external widgets to listen without direct modification
   static ValueListenable<List<LogEntry>> get logNotifier => _logNotifier;
+
+  /// Initialize configuration
+  static void initConfig(LogConfig config) {
+    _maxLogs = config.maxLogs;
+    summaryTag = config.summaryTag;
+    mockServerTag = config.mockServerTag;
+    termTag = config.termTag;
+  }
 
   static void addLog(String message, {LogLevel level = LogLevel.info}) {
     if (_logs.length >= _maxLogs) {

@@ -20,7 +20,21 @@ class ServerFailure extends Failure {
 }
 
 class ServerApiFailure extends Failure {
-  const ServerApiFailure(super.message);
+  final String? messageId;
+
+  const ServerApiFailure(super.message, {this.messageId});
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ServerApiFailure && other.message == message && other.messageId == messageId;
+  }
+
+  @override
+  int get hashCode => message.hashCode ^ messageId.hashCode;
+
+  @override
+  String toString() => 'ServerApiFailure(message: $message, messageId: $messageId)';
 }
 
 class NetworkFailure extends Failure {

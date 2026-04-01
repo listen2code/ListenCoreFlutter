@@ -3,7 +3,26 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
+
 import '../core.dart';
+
+abstract class PageLifecycle {
+  void onInit() {}
+  void onReady() {}
+  void onVisible() {}
+  void onInVisible() {}
+
+  /// Triggered when the widget physically enters the viewport.
+  void onViewVisible() {}
+
+  /// Triggered when the widget physically leaves the viewport.
+  void onViewInVisible() {}
+
+  void onResume() {}
+  void onPause() {}
+  void onInactive() {}
+  void onDispose() {}
+}
 
 /// Interface for states. Should only contain persistent UI data.
 abstract class BaseState {
@@ -24,21 +43,8 @@ abstract class IStateOwner<S> {
 
 /// Base interface for all ViewModels.
 /// [I] is the type of Intent this ViewModel can handle.
-abstract class BaseViewModel<I> {
-  // Lifecycle hooks
-  void onInit();
-  void onReady();
-  void onVisible();
-  void onInVisible();
-  void onResume();
-  void onPause();
-  void onInactive();
-  void onDispose();
-
+abstract class BaseViewModel<I> implements PageLifecycle {
   void cancelRequests(String reason);
-
-  /// Reactive stream for one-time UI effects.
-  Stream<BaseEffect> get effectStream;
 
   void emitEffect(BaseEffect effect);
 
@@ -47,7 +53,11 @@ abstract class BaseViewModel<I> {
 
   /// Unified entry point for all UI Intents.
   /// Subclasses should implementation logic in [onIntent] instead.
-  FutureOr<void> handleIntent(I intent);
+  /// [useZone] can be used to manually override the default Zone policy.
+  FutureOr<void> handleIntent(I intent, {bool? useZone});
+
+  /// Registers a handler for UI effects and manages its lifecycle internally.
+  void onBindEffect(void Function(BaseEffect effect) handler);
 }
 
 /// Mixin to handle common UI states, lifecycle logging, and side effects.
@@ -65,7 +75,8 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// Internal list to manage event bus subscriptions and ensure they are disposed.
   final List<StreamSubscription> _eventSubscriptions = [];
 
-  @override
+  /// Internal stream for one_time UI effects.
+  @protected
   Stream<BaseEffect> get effectStream => _effectController.stream;
 
   CancelToken get cancelToken {
@@ -89,6 +100,11 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   }) {
     final sub = eventBus.on<T>(onData, key: key, sticky: sticky, where: where);
     _eventSubscriptions.add(sub);
+  }
+
+  @override
+  void onBindEffect(void Function(BaseEffect effect) handler) {
+    _eventSubscriptions.add(effectStream.listen(handler));
   }
 
   /// Centralized state update method.
@@ -118,13 +134,14 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   }
 
   /// Implementation of [handleIntent] that forces the use of [dispatch].
+  /// The priority of Zone policy is: Parameter [useZone] > Method [shouldUseZone].
   @override
-  FutureOr<void> handleIntent(I intent) {
-    final useZone = shouldUseZone(intent);
-    return dispatch(intent, () => onIntent(intent), useZone: useZone);
+  FutureOr<void> handleIntent(I intent, {bool? useZone}) {
+    final effectiveUseZone = useZone ?? shouldUseZone(intent);
+    return dispatch(intent, () => onIntent(intent), useZone: effectiveUseZone);
   }
 
-  /// Subclasses can override this to disable Zone creation for high-frequency intents.
+  /// Subclasses can override this to disable Zone creation for high_frequency intents.
   @protected
   bool shouldUseZone(I intent) => true;
 
@@ -138,9 +155,10 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     FutureOr<void> Function(Failure failure)? onFailure,
     required FutureOr<void> Function(T data) onSuccess,
     bool showLoading = false,
+    LoadingType loadingType = LoadingType.both,
     String? loadingMessage,
   }) async {
-    if (showLoading) emitEffect(LoadingEffect(true, message: loadingMessage));
+    if (showLoading) emitEffect(LoadingEffect(true, message: loadingMessage, type: loadingType));
     try {
       final result = await action;
       await handleResult(result, onSuccess: onSuccess, onFailure: onFailure);
@@ -155,9 +173,10 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     FutureOr<void> Function(Failure failure)? onFailure,
     required FutureOr<void> Function(List<dynamic> results) onSuccess,
     bool showLoading = false,
+    LoadingType loadingType = LoadingType.both,
     String? loadingMessage,
   }) async {
-    if (showLoading) emitEffect(LoadingEffect(true, message: loadingMessage));
+    if (showLoading) emitEffect(LoadingEffect(true, message: loadingMessage, type: loadingType));
     try {
       final results = await Future.wait(actions);
 
@@ -170,7 +189,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
         if (onFailure != null) {
           await onFailure(firstFailure!);
         } else {
-          _handleFailure(firstFailure!);
+          handleFailure(firstFailure!);
         }
       } else {
         final dataList = results.map((r) => r.getOrElse((_) => throw Exception())).toList();
@@ -191,13 +210,14 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
       if (onFailure != null) {
         await onFailure(failure);
       } else {
-        _handleFailure(failure);
+        handleFailure(failure);
       }
     }, (data) async => await onSuccess(data));
   }
 
-  /// Common failure handler.
-  void _handleFailure(Failure failure) {
+  /// Common failure handler. Can be overridden by subclasses for custom error handling.
+  @protected
+  void handleFailure(Failure failure) {
     if (failure is AuthFailure) {
       emitEffect(LogoutEffect(message: failure.message));
     } else if (failure is ServerApiFailure) {
@@ -209,31 +229,62 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
 
   @override
   void cancelRequests(String reason) {
+    appLogger.i('${runtimeType.toString()} cancelRequests(${_cancelToken.isCancelled}) $reason');
     if (!_cancelToken.isCancelled) {
       _cancelToken.cancel(reason);
     }
   }
 
   @override
-  void onInit() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInit');
+  void onInit() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInit');
+  }
+
   @override
-  void onReady() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onReady');
+  void onReady() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onReady');
+  }
+
   @override
-  void onVisible() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onVisible');
+  void onVisible() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onVisible');
+  }
+
   @override
-  void onInVisible() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInVisible');
+  void onInVisible() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInVisible');
+  }
+
   @override
-  void onResume() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onResume');
+  void onViewVisible() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onViewVisible');
+  }
+
   @override
-  void onPause() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onPause');
+  void onViewInVisible() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onViewInVisible');
+  }
+
   @override
-  void onInactive() => appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInactive');
+  void onResume() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onResume');
+  }
+
+  @override
+  void onPause() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onPause');
+  }
+
+  @override
+  void onInactive() {
+    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInactive');
+  }
 
   @override
   @mustCallSuper
   void onDispose() {
     appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onDispose');
-    cancelRequests('${runtimeType.toString()} disposed');
+    cancelRequests('onDispose');
 
     // Automatically cancel all event bus subscriptions to prevent memory leaks.
     for (var sub in _eventSubscriptions) {
@@ -244,33 +295,25 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     _effectController.close();
   }
 
-  /// Low-level dispatcher. standardizes intent handling with Zone and logging.
+  /// Low_level dispatcher. standardizes intent handling with Zone and logging.
   @protected
   Future<void> dispatch(dynamic intent, FutureOr<void> Function() handler, {bool useZone = true}) {
-    if (!useZone) {
-      try {
-        final result = handler();
-        if (result is Future) return result;
-        return Future.value();
-      } catch (e) {
-        rethrow;
-      }
-    }
+    final tag = runtimeType.toString();
 
-    return ZoneManager.run(() {
-      final tag = runtimeType.toString();
+    void onStart() {
       appLogger.d('$tag: [INTENT] -> $intent');
       ZoneManager.mark('Intent [$intent] Started');
+    }
 
+    void onComplete() {
+      appLogger.d('$tag: [STATE] <- $state');
+      CrashManager.checkAndTriggerInjectedCrash();
+      ZoneManager.mark('Intent Finished');
+    }
+
+    Future<void> execute() {
       try {
         final result = handler();
-
-        void onComplete() {
-          appLogger.d('$tag: [STATE] <- $state');
-          CrashManager.checkAndTriggerInjectedCrash();
-          ZoneManager.mark('Intent Finished');
-        }
-
         if (result is Future) {
           return result.then((_) => onComplete(), onError: (e, s) => throw e);
         } else {
@@ -280,6 +323,16 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
       } catch (e) {
         rethrow;
       }
+    }
+
+    if (!useZone) {
+      onStart();
+      return execute();
+    }
+
+    return ZoneManager.run(() {
+      onStart();
+      return execute();
     }, cancelToken: cancelToken);
   }
 }

@@ -12,6 +12,9 @@ class MessageEffect extends BaseEffect {
 
   MessageEffect(this.message, {this.title, this.type = MessageType.info});
 
+  /// Factory for info messages (usually shown as Toast)
+  factory MessageEffect.info(String message) => MessageEffect(message, type: MessageType.info);
+
   /// Factory for error messages (usually shown as Toast)
   factory MessageEffect.error(String message) => MessageEffect(message, type: MessageType.error);
 
@@ -25,16 +28,19 @@ class MessageEffect extends BaseEffect {
   }
 }
 
+enum LoadingType { dialog, page, both }
+
 /// Standard Effect for controlling global loading state.
 class LoadingEffect extends BaseEffect {
   final bool show;
   final String? message;
+  final LoadingType? type;
 
-  LoadingEffect(this.show, {this.message});
+  LoadingEffect(this.show, {this.message, this.type = LoadingType.dialog});
 
   @override
   String toString() {
-    return "LoadingEffect(show: $show, message: $message)";
+    return "LoadingEffect(show: $show, message: $message, type: $type)";
   }
 }
 
@@ -51,41 +57,16 @@ class EmptyEffect extends BaseEffect {
   }
 }
 
-/// Standard Effect for navigating to a new target reactively.
-class NavigationEffect extends BaseEffect {
-  /// The navigation target (Route path or Object). Can be null for back operations.
-  final dynamic target;
-  final bool isReplace;
-  final bool isBack;
-  final Object? arguments;
-  final bool needLogin;
-
-  NavigationEffect({
-    this.target,
-    this.isReplace = false,
-    this.isBack = false,
-    this.arguments,
-    this.needLogin = false,
-  });
-
-  /// Helper constructor for back navigation.
-  factory NavigationEffect.back({Object? result}) => NavigationEffect(isBack: true, arguments: result);
-
-  @override
-  String toString() {
-    return "NavigationEffect(target: $target, isReplace: $isReplace, isBack: $isBack, needLogin: $needLogin, arguments: $arguments";
-  }
-}
-
 /// Effect to trigger a global logout operation.
 /// Typically emitted when an [AuthFailure] (like session timeout) occurs.
 class LogoutEffect extends BaseEffect {
   final String? message;
+  final String? to;
 
-  LogoutEffect({this.message});
+  LogoutEffect({this.message, this.to});
 
   @override
   String toString() {
-    return "LogoutEffect(message: $message)";
+    return "LogoutEffect(message: $message, to: $to)";
   }
 }

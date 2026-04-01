@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../core.dart';
 import 'package:logger/logger.dart';
+
+import '../core.dart';
 
 /// Global logger instance providing consistent logging and in-app log management.
 /// Configured to capture logs even in Release builds for the internal UI viewer.

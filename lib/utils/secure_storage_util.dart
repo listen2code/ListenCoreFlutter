@@ -16,8 +16,6 @@ class SecureStorageUtil {
     // In tests, this allows resetting the state if needed.
     _storage = const FlutterSecureStorage(
       aOptions: AndroidOptions(
-        // encryptedSharedPreferences is deprecated and will be removed in v11.
-        // The library now automatically handles migration to custom ciphers.
       ),
       iOptions: IOSOptions(
         // Keychain accessibility options for iOS.
