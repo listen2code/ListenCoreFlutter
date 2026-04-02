@@ -1,3 +1,19 @@
+## 0.0.4
+
+* **Documentation**:
+    * Added comprehensive multilingual README with English, Chinese, and Japanese support
+    * Expanded usage examples from 3 to 10 sections covering all core features
+    * Added detailed "Apps Using ListenCore" section featuring ListenPortfolioFlutter
+
+* **API Documentation**:
+    * Added comprehensive DartDoc comments to BaseViewModel, ViewModelMixin, and PageLifecycle
+    * Documented ApiClient and IApiInterceptorDelegate for authentication and tracing
+    * Added technical documentation for NetworkConfig, HttpCode, and logging infrastructure
+
+* **Architecture Enhancements**:
+    * Refined BaseViewModel structure with clearer separation of concerns
+    * Improved ViewModelMixin with better event subscription and request cancellation management
+
 ## 0.0.3
 
 * **Documentation & Architecture**:
