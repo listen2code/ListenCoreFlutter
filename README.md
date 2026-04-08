@@ -1,6 +1,8 @@
 # Listen Core
 
-A professional, high-performance core architecture framework for Flutter applications. Designed to provide a unified foundation for enterprise-level development with a focus on lifecycle management, robust networking, and structured logging.
+ListenCore is the reusable infrastructure layer extracted from `ListenPortfolioFlutter`.
+It focuses on business-agnostic application foundations such as lifecycle management, networking, routing primitives, tracing, crash protection, and shared utilities.
+It is not an app assembly layer, a reusable UI kit, or a complete cross-platform framework.
 
 ## 🔗 Links
 
@@ -10,85 +12,115 @@ A professional, high-performance core architecture framework for Flutter applica
 
 ---
 
-## � Language / 语言 / 言語
+## 🎯 Positioning
 
-- [English](#english) | [中文](#中文) | [日本語](#日本語)
+ListenCore is the reusable infrastructure layer behind `ListenPortfolioFlutter`. It is intended for **business-agnostic application foundations**, not for app-specific assembly logic, design-system widgets, or developer overlay UI.
 
----
+This README prioritizes:
 
-# English
+- **Current implemented capabilities**
+- **Clear package boundaries**
+- **Known limitations and target state separation**
 
-## �️ Architecture Design
+## 🧱 Current Package Scope
 
-### Design Principles
-- **Zero Business Coupling**: No business logic included, completely generic and reusable.
-- **High Cohesion & Low Coupling**: Modular design allows for independent extraction and publication.
-- **Highly Configurable**: Flexible behavior customization via dedicated configuration classes.
-- **Production Ready**: Built-in error handling, structured logging, and performance monitoring.
+### Included today
 
-### Module Structure
+- **MVI primitives**: `BaseViewModel`, `BaseState`, `BaseEffect`, provider registry
+- **Lifecycle wrappers**: `BaseLifeCyclePage`, `BaseScaffoldPage`, `BaseMaterialApp`
+- **Networking**: `ApiClient`, `BaseRepository`, `BaseResponseModel`, `UseCase`, connectivity abstraction
+- **Tracing & crash protection**: `ZoneManager`, `CrashManager`, `Core.run()`
+- **Routing primitives**: `AppNav`, route interceptors, auth interception hooks
+- **Environment & i18n**: `AppEnv`, `Translations`
+- **Utilities**: logging, event bus, validators, storage, package/device info, mock server
+
+### Not part of ListenCore's responsibility
+
+- App-specific navigation/share effects
+- Theme strategy or design tokens
+- Reusable UI widget library
+- App-specific debug overlays such as log floating windows
+
+## 🔀 Boundary Comparison
+
+| Layer | Primary responsibility | Not responsible for | Typical examples |
+|-------|------------------------|---------------------|------------------|
+| `ListenCore` | Application infrastructure primitives and runtime foundations | App-specific page assembly, reusable visual widget set, brand theme strategy | `BaseViewModel`, `ApiClient`, `AppNav`, `ZoneManager` |
+| `ListenUiKit` | Reusable presentation, input, and feedback widgets | Lifecycle management, networking, crash protection, environment setup | `CommonButton`, `CommonDialog`, `CommonEmptyView` |
+| App / shared layer | Business features, screen composition, feature-specific flows, product rules | Re-defining generic infrastructure or generic widget packages inside shared libraries | Feature pages, app-specific providers, domain workflows |
+
+## 🏗️ Module Structure
+
+```dart
+lib/
+├── base/           # ViewModel, lifecycle pages, base app wrappers
+├── config/         # Network / log / storage / mock server configuration
+├── env/            # Environment registration and switching
+├── errors/         # Exceptions and failures
+├── i18n/           # Translation registry
+├── network/        # ApiClient, repository helpers, response model, use case
+├── route/          # Navigation primitives and interceptors
+└── utils/          # Logging, crash protection, storage, event bus, validators
 ```
-lib/core/
-├── base/           # Architecture Layer (ViewModel, Lifecycle, Scaffolds)
-├── config/         # Configuration Management (Network, Logs, Mocking)
-├── env/            # Environment & Secret Management
-├── errors/         # Unified Error & Failure Handling
-├── i18n/           # Internationalization Support
-├── network/        # Networking (Dio, Interceptors, Mock Server)
-├── route/          # Routing & Navigation Interceptors
-└── utils/          # Utilities (Logging, Storage, Zones, Crash Protection)
-```
 
-## 🚀 Key Modules & Features
+## ✅ Current Highlights
 
-### 1. Base Architecture & Lifecycle (`base/`)
-- **BaseLifeCyclePage**: A unified page wrapper handling:
-  - Automatic `onInit`, `onReady`, `onResume`, `onPause`, `onVisible`, `onInVisible`.
-  - Built-in **Loading**, **Empty**, and **Error** state management.
-  - **Safety Timer** to prevent UI locks and automatic request cancellation.
-- **BaseViewModel (MVI)**: State-driven logic with built-in side-effect management.
-- **BaseMaterialApp**: Pre-configured with `NavigatorKey`, `RouteObserver`, and `ZoneManager`.
+### 1. Lifecycle & MVI foundation
 
-### 2. Networking & Mocking (`network/`)
-- **ApiClient**: Robust HTTP client with:
-  - Automatic token refresh & request queuing.
-  - X-Trace-Id correlation for distributed tracing.
-- **LocalMockServer**: An in-app HTTP server (port 9898) mapping API requests to local JSON assets.
-  - Supports versioning (e.g., `/v1/user` -> `json/v1/get/user.json`).
-  - Simulates network latency and logs request/response details.
-- **UseCase Pattern**: Standardized functional error handling using `fpdart`'s `Either<Failure, T>`.
+- `BaseLifeCyclePage` coordinates page lifecycle callbacks such as `onInit`, `onReady`, `onVisible`, `onResume`, and `onDispose`.
+- It can overlay custom loading / empty widgets when provided, and includes a loading safety timeout.
+- `BaseViewModel` centralizes intent handling, effect emission, request cancellation, and event subscriptions.
 
-### 3. Logging & Diagnostics (`utils/`)
-- **ZoneManager**: Captures unhandled exceptions and tracks async performance.
-- **AppLogger**: Structured logging with severity levels and JSON formatting.
-- **LogManager**: In-app floating log viewer with real-time log streaming and filtering.
-- **CrashManager**: Centralized error reporting, safety mode, and automatic recovery with crash upload.
+### 2. Network foundation
 
-### 4. Storage & Utilities (`utils/`)
-- **SpUtil**: Synchronous wrapper for `SharedPreferences` with JSON support.
-- **SecureStorageUtil**: Encrypted storage for sensitive data.
-- **Device & Package Info**: Quick access to hardware and app metadata.
+- `ApiClient` provides a multi-interceptor Dio setup with trace propagation, auth injection, refresh retry queueing, and error mapping.
+- `BaseRepository.safeCall()` standardizes repository error handling with `Either<Failure, T>`.
+- `LocalMockServer` serves local mock assets for offline/mobile debug scenarios.
 
-### 5. Advanced Features (`utils/`)
-- **Floating Log Viewer**: Real-time log display with floating window, search, and export capabilities.
-- **Crash Reporting**: Automatic crash detection, reporting, and upload to monitoring services.
-- **Event Bus**: Decoupled event communication across the application.
-- **Cache Manager**: Intelligent caching with TTL and memory management.
-- **Zone-based Error Tracking**: Comprehensive error tracking with trace ID correlation.
+### 3. Runtime infrastructure
 
-## 📦 Getting Started
+- `Core.init()` assembles storage, event bus, providers, network config, environment, i18n, navigation hooks, and logging.
+- `Core.run()` wraps the app in a guarded zone and persists crash logs before delegating UI recovery.
+- `ZoneManager` supports `traceId` propagation and lightweight performance marks.
+
+### 4. Utilities
+
+- `LogManager` stores structured log entries for in-app consumption.
+- `CrashManager` provides local crash persistence and Safe Mode reset hooks.
+- `SpUtil`, `SecureStorageUtil`, `eventBus`, validators, and package/device info helpers are included.
+
+## Current Limitations
+
+- Web / Desktop support is incomplete.
+- `LocalMockServer` depends on `dart:io`, so it is not Web-compatible.
+- Route parameters are not fully type-safe.
+- `CacheManager` is currently a cache cleanup utility, not a full data caching framework.
+- Test coverage is still far from where a mature reusable framework should be.
+
+## Target State
+
+- Improve platform coverage without overstating current Web / Desktop readiness.
+- Strengthen test coverage around lifecycle, routing, and networking behavior.
+- Continue clarifying boundaries between infrastructure primitives, UI widgets, and app-specific assembly code.
+
+## Pending Cleanup Backup
+
+- Older README revisions described ListenCore with stronger framework-marketing language than the current implementation supports.
+- The current README intentionally narrows the narrative to exported infrastructure capabilities and known limits.
+
+## Getting Started
 
 Add `listen_core` to your `pubspec.yaml`:
 
 ```bash
-dart pub add listen_core:0.0.3
+dart pub add listen_core:0.0.4
 ```
 
 Or add it manually:
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.3
+  listen_core: ^0.0.4
 ```
 
 **🔗 [View on pub.dev](https://pub.dev/packages/listen_core)**
@@ -136,13 +168,14 @@ class MyPage extends ConsumerWidget {
 ### 3. Network Request with UseCase
 
 ```dart
-class GetUserUseCase extends BaseUseCase<User, String> {
+class GetUserUseCase extends UseCase<User, String> {
   final ApiClient _apiClient;
   
   GetUserUseCase(this._apiClient);
   
   @override
-  Future<Either<Failure, User>> execute(String userId) async {
+  Future<Either<Failure, User>> call({String? param}) async {
+    final userId = param!;
     return await _apiClient.get('/users/$userId').then(
       (response) => Right(User.fromJson(response.data)),
       onError: (error) => Left(ServerApiFailure('Failed to get user')),
@@ -175,561 +208,13 @@ class UserViewModel with ViewModelMixin<UserState, UserIntent> {
 }
 ```
 
-### 5. Log Management
-
-```dart
-// Initialize log manager configuration
-LogManager.initConfig(LogConfig(
-  maxLogs: 1000,
-  summaryTag: 'App',
-  mockServerTag: 'Mock',
-));
-
-// Add logs programmatically
-LogManager.addLog('User logged in successfully', level: LogLevel.info);
-LogManager.addLog('API request failed', level: LogLevel.error);
-
-// Get all logs as text
-final allLogs = LogManager.getAllLogsAsText();
-
-// Clear logs
-LogManager.clear();
-
-// Listen to log changes
-LogManager.logNotifier.addListener(() {
-  final logs = LogManager.logs;
-  // Handle log updates
-});
-```
-
-### 6. Cache Management
-
-```dart
-// Get cache size
-final cacheSize = await CacheManager.getCacheSize();
-
-// Clear all cache
-await CacheManager.clearAllCache();
-```
-
-### 7. SharedPreferences Utility
-
-```dart
-// Initialize SpUtil
-await SpUtil.init(prefix: 'my_app_');
-
-// Store data
-await SpUtil.setString('user_name', 'John Doe');
-await SpUtil.setInt('user_age', 25);
-await SpUtil.setBool('is_logged_in', true);
-
-// Store JSON data
-await SpUtil.setJson('user_profile', userProfile);
-
-// Retrieve data
-final userName = SpUtil.getString('user_name');
-final userAge = SpUtil.getInt('user_age');
-final isLoggedIn = SpUtil.getBool('is_logged_in');
-
-// Retrieve JSON data
-final userProfile = SpUtil.getJson<User>('user_profile');
-```
-
-### 8. Advanced Navigation & Routing
-
-```dart
-// Initialize AppNav with authentication and routes
-void main() {
-  AppNavConfig.register(
-    isGuest: () => !AuthService.isLoggedIn(),
-    onLogin: (context) async {
-      // Show login page and return success/failure
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => LoginPage()),
-      );
-      return result ?? false;
-    },
-    onLoginSuccess: () {
-      // Called after successful login
-      appLogger.i('User logged in successfully');
-    },
-    onShowLoginDialog: (context) async {
-      // Show confirmation dialog before login
-      return await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Login Required'),
-          content: Text('Please login to access this feature.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('Login'),
-            ),
-          ],
-        ),
-      ) ?? false;
-    },
-    routes: {
-      '/profile': () => ProfilePage(),
-      '/settings': () => SettingsPage(),
-      '/users/:id': () => UserDetailPage(),
-    },
-  );
-}
-
-// Navigate with authentication check
-await AppNav.to('/profile', needLogin: true);
-
-// Navigate with parameters
-await AppNav.to('/users/123', arguments: {'userId': '123'});
-
-// Navigate with query parameters
-await AppNav.to('/users/123?tab=posts&filter=active');
-
-// Replace current route
-await AppNav.off('/home');
-
-// Clear all routes and navigate to new page
-await AppNav.offAll('/dashboard', needLogin: true);
-
-// Go back
-AppNav.back();
-
-// Get route parameters in destination page
-class UserDetailPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Get parameter from route
-    final userId = AppNav.getParam<String>('id');
-    
-    // Get all arguments
-    final args = AppNav.getArgs<Map<String, dynamic>>();
-    
-    return Scaffold(
-      appBar: AppBar(title: Text('User $userId')),
-      body: Column(
-        children: [
-          Text('User ID: $userId'),
-          if (args != null) ...[
-            Text('Tab: ${args['tab']}'),
-            Text('Filter: ${args['filter']}'),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// In MaterialApp
-MaterialApp(
-  navigatorKey: AppNavConfig.navigatorKey,
-  onGenerateRoute: AppNav.onGenerateRoute,
-  navigatorObservers: [AppNav.observer],
-  home: HomePage(),
-)
-```
-
-### 9. Core Architecture Components
-
-#### BaseLifeCyclePage vs BaseScaffoldPage vs BaseMaterialApp
-
-**BaseMaterialApp:**
-```dart
-// App-level wrapper with framework integration
-BaseMaterialApp(
-  title: 'My App',
-  home: HomePage(),
-  // Automatically integrates:
-  // - AppNav navigation system
-  // - Zone-based performance tracking
-  // - Route observers
-)
-```
-
-**BaseLifeCyclePage:**
-```dart
-// Page wrapper with lifecycle management and state handling
-class MyPage extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return BaseLifeCyclePage(
-      title: 'My Page',
-      viewModel: ref.watch(myViewModelProvider),
-      body: (context, child) => MyContent(),
-      onEffect: (effect) {
-        // Handle UI effects (messages, loading, etc.)
-      },
-      // Handles:
-      // - ViewModel lifecycle (onInit, onReady, onDispose)
-      // - Loading states with timeout protection
-      // - Back navigation interception
-      // - Effect handling
-    );
-  }
-}
-```
-
-**BaseScaffoldPage:**
-```dart
-// Pure UI skeleton without lifecycle management
-class MyPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BaseScaffoldPage(
-      title: 'My Page',
-      child: MyContent(),
-      // Handles:
-      // - AppBar, StatusBar, BottomBar
-      // - Safe area, padding
-      // - Background decorations
-      // - PopScope behavior
-    );
-  }
-}
-```
-
-#### BaseEffect & ProviderRegistry
-
-**Define Effects:**
-```dart
-// Custom effect for navigation
-class NavigateToProfileEffect extends BaseEffect {
-  final String userId;
-  NavigateToProfileEffect(this.userId);
-}
-
-// Standard effects (built-in)
-MessageEffect.info('Success!');
-MessageEffect.error('Failed!');
-MessageEffect.dialog('Confirm action');
-LoadingEffect.show(true);
-EmptyEffect.show(true, 'No data available');
-```
-
-**Create Provider:**
-```dart
-class NavigationProvider extends BaseProvider<NavigateToProfileEffect> {
-  @override
-  void handleEffect(NavigateToProfileEffect effect) {
-    AppNav.to('/profile', arguments: {'userId': effect.userId});
-  }
-}
-
-class MessageProvider extends BaseProvider<MessageEffect> {
-  @override
-  void handleEffect(MessageEffect effect) {
-    switch (effect.type) {
-      case MessageType.info:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(effect.message)),
-        );
-        break;
-      case MessageType.error:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(effect.message), backgroundColor: Colors.red),
-        );
-        break;
-      case MessageType.dialog:
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(effect.title ?? 'Alert'),
-            content: Text(effect.message),
-          ),
-        );
-        break;
-    }
-  }
-}
-```
-
-**Register Providers:**
-```dart
-void main() {
-  // Initialize providers
-  ProviderRegistry.init([
-    NavigationProvider(),
-    MessageProvider(),
-    LoadingProvider(),
-    // ... other providers
-  ]);
-  
-  runApp(MyApp());
-}
-```
-
-**Use in ViewModel:**
-```dart
-class UserViewModel extends BaseViewModel<UserState, UserIntent> {
-  @override
-  Future<void> onIntent(UserIntent intent) async {
-    if (intent is LoadUserIntent) {
-      emitEffect(LoadingEffect.show(true));
-      
-      final result = await getUserUseCase.execute(intent.userId);
-      
-      result.fold(
-        (failure) => emitEffect(MessageEffect.error(failure.message)),
-        (user) => emitEffect(NavigateToProfileEffect(user.id)),
-      );
-      
-      emitEffect(LoadingEffect.show(false));
-    }
-  }
-}
-```
-
-#### Environment Configuration
-
-**Define Environment Configs:**
-```dart
-class MockConfig extends BaseEnvConfig {
-  @override
-  AppEnvironment get env => AppEnvironment.mock;
-  
-  @override
-  String get baseUrl => 'http://localhost:9898';
-  
-  @override
-  int get connectTimeout => 5000;
-  
-  @override
-  int get receiveTimeout => 10000;
-  
-  @override
-  int get apiTimeout => 15000;
-}
-
-class ProdConfig extends BaseEnvConfig {
-  @override
-  AppEnvironment get env => AppEnvironment.prod;
-  
-  @override
-  String get baseUrl => 'https://api.myapp.com';
-  
-  @override
-  int get connectTimeout => 30000;
-  
-  @override
-  int get receiveTimeout => 30000;
-  
-  @override
-  int get apiTimeout => 60000;
-}
-```
-
-**Initialize Environment:**
-```dart
-void main() {
-  // Register environment configurations
-  AppEnv.register({
-    AppEnvironment.mock: MockConfig(),
-    AppEnvironment.dev: DevConfig(),
-    AppEnvironment.test: TestConfig(),
-    AppEnvironment.prod: ProdConfig(),
-  });
-  
-  // Environment is automatically selected from APP_ENV environment variable
-  // Default: mock
-  
-  runApp(MyApp());
-}
-
-// Use environment-specific values
-final config = AppEnv.config;
-final apiClient = ApiClient(baseUrl: config.baseUrl);
-```
-
-#### Internationalization
-
-**Setup Translations:**
-```dart
-void main() {
-  // Register translation data
-  Translations.register(
-    data: {
-      'en': {
-        'welcome': 'Welcome',
-        'login_failed': 'Login failed',
-        'hello_user': 'Hello %s',
-      },
-      'zh': {
-        'welcome': '欢迎',
-        'login_failed': '登录失败',
-        'hello_user': '你好 %s',
-      },
-      'ja': {
-        'welcome': 'ようこそ',
-        'login_failed': 'ログインに失敗しました',
-        'hello_user': 'こんにちは %s',
-      },
-    },
-    languageCodeProvider: () => getCurrentLanguage(),
-  );
-  
-  runApp(MyApp());
-}
-```
-
-**Use in Code:**
-```dart
-// Simple translation
-Text('welcome'.tr)  // -> "Welcome" / "欢迎" / "ようこそ"
-
-// With arguments
-Text('hello_user'.trArgs(['John']))  // -> "Hello John" / "你好 John" / "こんにちは John"
-
-// In ViewModels
-class UserViewModel {
-  void showWelcome() {
-    emitEffect(MessageEffect.info('welcome'.tr));
-  }
-}
-```
-
-#### Zone Management
-
-**Global Zone Setup:**
-```dart
-void main() {
-  // Run entire app in managed zone
-  ZoneManager.run(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Core.init(CoreConfig.defaultConfig());
-    runApp(MyApp());
-  });
-}
-```
-
-**Automatic Features:**
-```dart
-// All async operations automatically get:
-// 1. Trace ID correlation
-await someAsyncOperation();  // Gets trace ID automatically
-
-// 2. Request cancellation
-class MyViewModel extends BaseViewModel {
-  @override
-  void onDispose() {
-    // All HTTP requests in this zone are automatically cancelled
-    super.onDispose();
-  }
-}
-
-// 3. Performance tracking
-ZoneManager.mark('User data loaded');  // Manual performance marks
-
-// 4. Error handling
-try {
-  await riskyOperation();
-} catch (e, stackTrace) {
-  // Automatically logged with trace ID
-  appLogger.e('Operation failed', error: e, stackTrace: stackTrace);
-}
-```
-
-**Manual Zone Operations:**
-```dart
-// Run specific operation in new zone
-final result = await ZoneManager.runOperation('user-login', () async {
-  return await authService.login(email, password);
-});
-
-// Get current trace ID
-final traceId = ZoneManager.currentTraceId;
-
-// Get current cancel token
-final cancelToken = ZoneManager.currentCancelToken;
-```
-
-### 10. Secure Storage
-
-```dart
-// Store sensitive data securely
-await SecureStorageUtil.write('auth_token', token);
-
-// Retrieve sensitive data
-final token = await SecureStorageUtil.read('auth_token');
-
-// Delete sensitive data
-await SecureStorageUtil.delete('auth_token');
-```
-
-## 🎯 Target Use Cases
-- **Enterprise Applications**: Requiring a solid, scalable architecture.
-- **Fast Prototyping**: Quickly setting up a standardized infrastructure.
-- **Multi-App Ecosystems**: Sharing a unified tech stack across different projects.
-
-## 🔮 Roadmap
-- [ ] Support for Web and Desktop platforms.
-- [ ] Integration with more 3rd-party monitoring services (Sentry/Firebase).
-- [ ] Visual configuration tool for `CoreConfig`.
-- [ ] Enhanced unit test coverage for the network layer.
-
-## 🛠 Requirements
-- Flutter: `>=3.10.1`
-- Dart: `^3.10.1`
-
-## 🚀 Apps Using ListenCore
-
-### ListenPortfolioFlutter
-A comprehensive portfolio management application built with ListenCore that demonstrates the framework's capabilities in a real-world scenario.
-
-**Features demonstrated:**
-- **MVI Architecture**: Clean separation of concerns with ViewModels and state management
-- **Lifecycle Management**: Proper handling of page lifecycle events and resource cleanup
-- **Network Layer**: RESTful API integration with automatic token refresh and error handling
-- **Mock Server**: Local development with realistic API simulation
-- **Logging System**: Comprehensive logging with trace ID correlation
-- **Internationalization**: Multi-language support with i18n integration
-
-**Key Implementation Examples:**
-```dart
-// ViewModel with MVI pattern
-class PortfolioViewModel with ViewModelMixin<PortfolioState, PortfolioIntent> {
-  @override
-  PortfolioState get state => _state;
-  @override
-  set state(PortfolioState value) => _state = value;
-  
-  @override
-  Future<void> onIntent(PortfolioIntent intent) async {
-    if (intent is LoadPortfolioIntent) {
-      await call(
-        _getPortfolioUseCase.execute(intent.userId),
-        onSuccess: (portfolio) => updateState(state.copyWith(portfolio: portfolio)),
-        showLoading: true,
-      );
-    }
-  }
-}
-
-// Lifecycle-managed page
-class PortfolioPage extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return BaseLifeCyclePage(
-      title: 'Portfolio',
-      viewModel: ref.watch(portfolioViewModelProvider),
-      body: (context, child) => PortfolioContent(),
-    );
-  }
-}
-```
-
-**🔗 [View on GitHub](https://github.com/listen2code/ListenPortfolioFlutter)**
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ---
 
 # 中文
+
+ListenCore 是从 `ListenPortfolioFlutter` 抽离出的可复用基础设施层。
+它聚焦于业务无关的应用底座能力，例如生命周期管理、网络、路由基础能力、链路追踪、崩溃保护与通用工具。
+它不是 App 组装层、可复用 UI 组件库，也不是一个完整的跨平台框架。
 
 ## 🔗 链接
 
@@ -739,77 +224,115 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🏗️ 架构设计
+## 🎯 定位
 
-### 设计原则
-- **零业务耦合**: 不包含业务逻辑，完全通用和可重用。
-- **高内聚低耦合**: 模块化设计允许独立提取和发布。
-- **高度可配置**: 通过专用配置类灵活定制行为。
-- **生产就绪**: 内置错误处理、结构化日志和性能监控。
+ListenCore 是从 `ListenPortfolioFlutter` 抽离出的可复用基础设施层，面向**业务无关的应用底座能力**，而不是 App 专属组装逻辑、设计系统组件库或开发者浮窗 UI。
 
-### 模块结构
+本 README 优先强调：
+
+- **当前已经落地的能力**
+- **清晰的包边界**
+- **把现状与目标态分开描述**
+
+## 🧱 当前包范围
+
+### 已包含
+
+- **MVI 基础类**：`BaseViewModel`、`BaseState`、`BaseEffect`、provider registry
+- **生命周期包装**：`BaseLifeCyclePage`、`BaseScaffoldPage`、`BaseMaterialApp`
+- **网络基础设施**：`ApiClient`、`BaseRepository`、`BaseResponseModel`、`UseCase`
+- **链路追踪与崩溃保护**：`ZoneManager`、`CrashManager`、`Core.run()`
+- **导航基础能力**：`AppNav`、route interceptors、auth interception hooks
+- **环境与国际化**：`AppEnv`、`Translations`
+- **通用工具**：日志、event bus、validator、存储、设备/包信息、MockServer
+
+### 不属于 ListenCore 的职责
+
+- App 专属的导航 / 分享 effect
+- 主题策略或 design tokens
+- 可复用 UI 组件库
+- App 专属的调试浮窗与开发者面板 UI
+
+## 🔀 模块边界对照
+
+| 层级 | 主要职责 | 不负责什么 | 典型示例 |
+|------|----------|------------|----------|
+| `ListenCore` | 应用基础设施原语与运行时底座 | App 专属页面组装、可复用视觉组件集、品牌主题策略 | `BaseViewModel`、`ApiClient`、`AppNav`、`ZoneManager` |
+| `ListenUiKit` | 可复用展示、输入、反馈组件 | 生命周期管理、网络、崩溃保护、环境初始化 | `CommonButton`、`CommonDialog`、`CommonEmptyView` |
+| App / shared 层 | 业务功能、页面组装、特性流程、产品规则 | 在共享库中重新定义通用基础设施或通用组件包 | 功能页面、App 专属 provider、领域流程编排 |
+
+## 🏗️ 模块结构
+
+```dart
+lib/
+├── base/           # ViewModel、生命周期页面、基础应用包装
+├── config/         # 网络 / 日志 / 存储 / MockServer 配置
+├── env/            # 环境注册与切换
+├── errors/         # Exceptions 与 Failures
+├── i18n/           # 翻译注册
+├── network/        # ApiClient、Repository 辅助、响应模型、UseCase
+├── route/          # 导航原语与拦截器
+└── utils/          # 日志、崩溃保护、存储、event bus、validator
 ```
-lib/core/
-├── base/           # 架构层 (ViewModel, 生命周期, 脚手架)
-├── config/         # 配置管理 (网络, 日志, 模拟)
-├── env/            # 环境与密钥管理
-├── errors/         # 统一错误与失败处理
-├── i18n/           # 国际化支持
-├── network/        # 网络层 (Dio, 拦截器, 模拟服务器)
-├── route/          # 路由与导航拦截器
-└── utils/          # 工具类 (日志, 存储, 区域, 崩溃保护)
-```
 
-## 🚀 核心模块与功能
+## ✅ 当前亮点
 
-### 1. 基础架构与生命周期 (`base/`)
-- **BaseLifeCyclePage**: 统一页面包装器，处理：
-  - 自动 `onInit`, `onReady`, `onResume`, `onPause`, `onVisible`, `onInVisible`。
-  - 内置 **加载**、**空** 和 **错误** 状态管理。
-  - **安全定时器** 防止UI锁定和自动请求取消。
-- **BaseViewModel (MVI)**: 状态驱动逻辑，内置副作用管理。
-- **BaseMaterialApp**: 预配置 `NavigatorKey`、`RouteObserver` 和 `ZoneManager`。
+### 1. 生命周期与 MVI 基础
 
-### 2. 网络与模拟 (`network/`)
-- **ApiClient**: 强大的HTTP客户端，具有：
-  - 自动令牌刷新和请求队列。
-  - X-Trace-Id关联用于分布式追踪。
-- **LocalMockServer**: 应用内HTTP服务器（端口9898），将API请求映射到本地JSON资源。
-  - 支持版本控制（例如 `/v1/user` -> `json/v1/get/user.json`）。
-  - 模拟网络延迟并记录请求/响应详细信息。
-- **UseCase模式**: 使用`fpdart`的`Either<Failure, T>`进行标准化函数式错误处理。
+- `BaseLifeCyclePage` 负责 `onInit`、`onReady`、`onVisible`、`onResume`、`onDispose` 等回调协同。
+- 当调用方提供 `onLoading` / `onEmpty` 时，它可以自动叠加对应状态视图，并带有 loading safety timeout。
+- `BaseViewModel` 负责 intent 处理、副作用分发、请求取消与事件订阅。
 
-### 3. 日志与诊断 (`utils/`)
-- **ZoneManager**: 捕获未处理异常并跟踪异步性能。
-- **AppLogger**: 具有严重性级别和JSON格式的结构化日志。
-- **LogManager**: 应用内浮动日志查看器，支持实时日志流和过滤。
-- **CrashManager**: 集中错误报告、安全模式和自动恢复，支持崩溃上传。
+### 2. 网络基础设施
 
-### 4. 存储与工具 (`utils/`)
-- **SpUtil**: `SharedPreferences`的同步包装器，支持JSON。
-- **SecureStorageUtil**: 敏感数据的加密存储。
-- **设备与包信息**: 快速访问硬件和应用元数据。
+- `ApiClient` 提供多层 Dio 拦截器：trace 传播、认证注入、refresh 重试队列、错误映射。
+- `BaseRepository.safeCall()` 用 `Either<Failure, T>` 收敛仓储层错误处理。
+- `LocalMockServer` 支持离线 / 调试场景下的本地 mock 资源服务。
 
-### 5. 高级功能 (`utils/`)
-- **浮动日志查看器**: 实时日志显示，支持浮动窗口、搜索和导出功能。
-- **崩溃报告**: 自动崩溃检测、报告和上传到监控服务。
-- **事件总线**: 应用程序内的解耦事件通信。
-- **缓存管理器**: 具有TTL和内存管理的智能缓存。
-- **基于区域的错误跟踪**: 具有追踪ID关联的综合错误跟踪。
+### 3. 运行时基础设施
+
+- `Core.init()` 负责装配存储、事件总线、providers、网络配置、环境、i18n、导航 hook、日志等。
+- `Core.run()` 在受保护的 Zone 中运行应用，并在交给业务层处理前先持久化崩溃日志。
+- `ZoneManager` 支持 `traceId` 传播与轻量性能打点。
+
+### 4. 通用工具
+
+- `LogManager` 负责结构化日志存储，供应用层消费。
+- `CrashManager` 提供本地 crash 持久化与 Safe Mode reset hook。
+- `SpUtil`、`SecureStorageUtil`、`eventBus`、validator、设备/包信息工具均已提供。
+
+## ⚠️ 当前限制
+
+- Web / Desktop 支持仍不完整。
+- `LocalMockServer` 依赖 `dart:io`，因此不支持 Web。
+- 路由参数还不是完全类型安全。
+- `CacheManager` 当前更接近缓存清理工具，而不是完整的数据缓存框架。
+- 测试覆盖距离成熟可复用框架仍有明显差距。
+
+## 🔮 目标态
+
+- 在不夸大当前 Web / Desktop 状态的前提下，逐步提升平台覆盖。
+- 补强生命周期、路由与网络行为相关的测试覆盖。
+- 继续明确基础设施能力、UI 组件层与 App 组装层之间的边界。
+
+## 🗂️ 待删除备份区
+
+- 旧版 README 曾使用比当前实现更强的“框架型宣传口径”。
+- 当前 README 刻意收窄为已导出的基础设施能力与已知限制。
 
 ## 📦 快速开始
 
 将 `listen_core` 添加到您的 `pubspec.yaml`：
 
 ```bash
-dart pub add listen_core:0.0.3
+dart pub add listen_core:0.0.4
 ```
 
 或手动添加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.3
+  listen_core: ^0.0.4
 ```
 
 **🔗 [在 pub.dev 上查看](https://pub.dev/packages/listen_core)**
@@ -820,7 +343,7 @@ dependencies:
 
 ```dart
 void main() async {
-  // 1. 在托管区域中运行以进行错误跟踪
+  // 1. 在受保护的 Zone 中运行以进行错误跟踪
   ZoneManager.run(() async {
     WidgetsFlutterBinding.ensureInitialized();
     
@@ -857,13 +380,14 @@ class MyPage extends ConsumerWidget {
 ### 3. 使用UseCase的网络请求
 
 ```dart
-class GetUserUseCase extends BaseUseCase<User, String> {
+class GetUserUseCase extends UseCase<User, String> {
   final ApiClient _apiClient;
   
   GetUserUseCase(this._apiClient);
   
   @override
-  Future<Either<Failure, User>> execute(String userId) async {
+  Future<Either<Failure, User>> call({String? param}) async {
+    final userId = param!;
     return await _apiClient.get('/users/$userId').then(
       (response) => Right(User.fromJson(response.data)),
       onError: (error) => Left(ServerApiFailure('获取用户失败')),
@@ -896,561 +420,13 @@ class UserViewModel with ViewModelMixin<UserState, UserIntent> {
 }
 ```
 
-### 5. 日志管理
-
-```dart
-// 初始化日志管理器配置
-LogManager.initConfig(LogConfig(
-  maxLogs: 1000,
-  summaryTag: 'App',
-  mockServerTag: 'Mock',
-));
-
-// 以编程方式添加日志
-LogManager.addLog('用户登录成功', level: LogLevel.info);
-LogManager.addLog('API请求失败', level: LogLevel.error);
-
-// 获取所有日志文本
-final allLogs = LogManager.getAllLogsAsText();
-
-// 清除日志
-LogManager.clear();
-
-// 监听日志变化
-LogManager.logNotifier.addListener(() {
-  final logs = LogManager.logs;
-  // 处理日志更新
-});
-```
-
-### 6. 缓存管理
-
-```dart
-// 获取缓存大小
-final cacheSize = await CacheManager.getCacheSize();
-
-// 清除所有缓存
-await CacheManager.clearAllCache();
-```
-
-### 7. SharedPreferences 工具
-
-```dart
-// 初始化 SpUtil
-await SpUtil.init(prefix: 'my_app_');
-
-// 存储数据
-await SpUtil.setString('user_name', '张三');
-await SpUtil.setInt('user_age', 25);
-await SpUtil.setBool('is_logged_in', true);
-
-// 存储 JSON 数据
-await SpUtil.setJson('user_profile', userProfile);
-
-// 检索数据
-final userName = SpUtil.getString('user_name');
-final userAge = SpUtil.getInt('user_age');
-final isLoggedIn = SpUtil.getBool('is_logged_in');
-
-// 检索 JSON 数据
-final userProfile = SpUtil.getJson<User>('user_profile');
-```
-
-### 8. 高级导航与路由
-
-```dart
-// 初始化 AppNav 配置身份验证和路由
-void main() {
-  AppNavConfig.register(
-    isGuest: () => !AuthService.isLoggedIn(),
-    onLogin: (context) async {
-      // 显示登录页面并返回成功/失败
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => LoginPage()),
-      );
-      return result ?? false;
-    },
-    onLoginSuccess: () {
-      // 成功登录后调用
-      appLogger.i('用户登录成功');
-    },
-    onShowLoginDialog: (context) async {
-      // 登录前显示确认对话框
-      return await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('需要登录'),
-          content: Text('请登录以访问此功能。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('登录'),
-            ),
-          ],
-        ),
-      ) ?? false;
-    },
-    routes: {
-      '/profile': () => ProfilePage(),
-      '/settings': () => SettingsPage(),
-      '/users/:id': () => UserDetailPage(),
-    },
-  );
-}
-
-// 带身份验证检查的导航
-await AppNav.to('/profile', needLogin: true);
-
-// 带参数的导航
-await AppNav.to('/users/123', arguments: {'userId': '123'});
-
-// 带查询参数的导航
-await AppNav.to('/users/123?tab=posts&filter=active');
-
-// 替换当前路由
-await AppNav.off('/home');
-
-// 清除所有路由并导航到新页面
-await AppNav.offAll('/dashboard', needLogin: true);
-
-// 返回
-AppNav.back();
-
-// 在目标页面获取路由参数
-class UserDetailPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // 从路由获取参数
-    final userId = AppNav.getParam<String>('id');
-    
-    // 获取所有参数
-    final args = AppNav.getArgs<Map<String, dynamic>>();
-    
-    return Scaffold(
-      appBar: AppBar(title: Text('用户 $userId')),
-      body: Column(
-        children: [
-          Text('用户ID: $userId'),
-          if (args != null) ...[
-            Text('标签: ${args['tab']}'),
-            Text('过滤器: ${args['filter']}'),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// 在 MaterialApp 中使用
-MaterialApp(
-  navigatorKey: AppNavConfig.navigatorKey,
-  onGenerateRoute: AppNav.onGenerateRoute,
-  navigatorObservers: [AppNav.observer],
-  home: HomePage(),
-)
-```
-
-### 9. 核心架构组件
-
-#### BaseLifeCyclePage vs BaseScaffoldPage vs BaseMaterialApp
-
-**BaseMaterialApp:**
-```dart
-// 应用级包装器，集成框架功能
-BaseMaterialApp(
-  title: '我的应用',
-  home: HomePage(),
-  // 自动集成：
-  // - AppNav 导航系统
-  // - 基于Zone的性能跟踪
-  // - 路由观察器
-)
-```
-
-**BaseLifeCyclePage:**
-```dart
-// 页面包装器，具有生命周期管理和状态处理
-class MyPage extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return BaseLifeCyclePage(
-      title: '我的页面',
-      viewModel: ref.watch(myViewModelProvider),
-      body: (context, child) => MyContent(),
-      onEffect: (effect) {
-        // 处理UI效果（消息、加载等）
-      },
-      // 处理：
-      // - ViewModel生命周期（onInit、onReady、onDispose）
-      // - 带超时保护的加载状态
-      // - 返回导航拦截
-      // - 效果处理
-    );
-  }
-}
-```
-
-**BaseScaffoldPage:**
-```dart
-// 纯UI骨架，无生命周期管理
-class MyPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BaseScaffoldPage(
-      title: '我的页面',
-      child: MyContent(),
-      // 处理：
-      // - AppBar、StatusBar、BottomBar
-      // - 安全区域、内边距
-      // - 背景装饰
-      // - PopScope行为
-    );
-  }
-}
-```
-
-#### BaseEffect & ProviderRegistry
-
-**定义效果：**
-```dart
-// 自定义导航效果
-class NavigateToProfileEffect extends BaseEffect {
-  final String userId;
-  NavigateToProfileEffect(this.userId);
-}
-
-// 标准效果（内置）
-MessageEffect.info('成功！');
-MessageEffect.error('失败！');
-MessageEffect.dialog('确认操作');
-LoadingEffect.show(true);
-EmptyEffect.show(true, '无数据');
-```
-
-**创建提供者：**
-```dart
-class NavigationProvider extends BaseProvider<NavigateToProfileEffect> {
-  @override
-  void handleEffect(NavigateToProfileEffect effect) {
-    AppNav.to('/profile', arguments: {'userId': effect.userId});
-  }
-}
-
-class MessageProvider extends BaseProvider<MessageEffect> {
-  @override
-  void handleEffect(MessageEffect effect) {
-    switch (effect.type) {
-      case MessageType.info:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(effect.message)),
-        );
-        break;
-      case MessageType.error:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(effect.message), backgroundColor: Colors.red),
-        );
-        break;
-      case MessageType.dialog:
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(effect.title ?? '警告'),
-            content: Text(effect.message),
-          ),
-        );
-        break;
-    }
-  }
-}
-```
-
-**注册提供者：**
-```dart
-void main() {
-  // 初始化提供者
-  ProviderRegistry.init([
-    NavigationProvider(),
-    MessageProvider(),
-    LoadingProvider(),
-    // ... 其他提供者
-  ]);
-  
-  runApp(MyApp());
-}
-```
-
-**在ViewModel中使用：**
-```dart
-class UserViewModel extends BaseViewModel<UserState, UserIntent> {
-  @override
-  Future<void> onIntent(UserIntent intent) async {
-    if (intent is LoadUserIntent) {
-      emitEffect(LoadingEffect.show(true));
-      
-      final result = await getUserUseCase.execute(intent.userId);
-      
-      result.fold(
-        (failure) => emitEffect(MessageEffect.error(failure.message)),
-        (user) => emitEffect(NavigateToProfileEffect(user.id)),
-      );
-      
-      emitEffect(LoadingEffect.show(false));
-    }
-  }
-}
-```
-
-#### 环境配置
-
-**定义环境配置：**
-```dart
-class MockConfig extends BaseEnvConfig {
-  @override
-  AppEnvironment get env => AppEnvironment.mock;
-  
-  @override
-  String get baseUrl => 'http://localhost:9898';
-  
-  @override
-  int get connectTimeout => 5000;
-  
-  @override
-  int get receiveTimeout => 10000;
-  
-  @override
-  int get apiTimeout => 15000;
-}
-
-class ProdConfig extends BaseEnvConfig {
-  @override
-  AppEnvironment get env => AppEnvironment.prod;
-  
-  @override
-  String get baseUrl => 'https://api.myapp.com';
-  
-  @override
-  int get connectTimeout => 30000;
-  
-  @override
-  int get receiveTimeout => 30000;
-  
-  @override
-  int get apiTimeout => 60000;
-}
-```
-
-**初始化环境：**
-```dart
-void main() {
-  // 注册环境配置
-  AppEnv.register({
-    AppEnvironment.mock: MockConfig(),
-    AppEnvironment.dev: DevConfig(),
-    AppEnvironment.test: TestConfig(),
-    AppEnvironment.prod: ProdConfig(),
-  });
-  
-  // 环境从APP_ENV环境变量自动选择
-  // 默认：mock
-  
-  runApp(MyApp());
-}
-
-// 使用环境特定值
-final config = AppEnv.config;
-final apiClient = ApiClient(baseUrl: config.baseUrl);
-```
-
-#### 国际化
-
-**设置翻译：**
-```dart
-void main() {
-  // 注册翻译数据
-  Translations.register(
-    data: {
-      'en': {
-        'welcome': 'Welcome',
-        'login_failed': 'Login failed',
-        'hello_user': 'Hello %s',
-      },
-      'zh': {
-        'welcome': '欢迎',
-        'login_failed': '登录失败',
-        'hello_user': '你好 %s',
-      },
-      'ja': {
-        'welcome': 'ようこそ',
-        'login_failed': 'ログインに失敗しました',
-        'hello_user': 'こんにちは %s',
-      },
-    },
-    languageCodeProvider: () => getCurrentLanguage(),
-  );
-  
-  runApp(MyApp());
-}
-```
-
-**在代码中使用：**
-```dart
-// 简单翻译
-Text('welcome'.tr)  // -> "Welcome" / "欢迎" / "ようこそ"
-
-// 带参数
-Text('hello_user'.trArgs(['张三']))  // -> "Hello 张三" / "你好 张三" / "こんにちは 張三"
-
-// 在ViewModel中
-class UserViewModel {
-  void showWelcome() {
-    emitEffect(MessageEffect.info('welcome'.tr));
-  }
-}
-```
-
-#### Zone管理
-
-**全局Zone设置：**
-```dart
-void main() {
-  // 在托管Zone中运行整个应用
-  ZoneManager.run(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Core.init(CoreConfig.defaultConfig());
-    runApp(MyApp());
-  });
-}
-```
-
-**自动功能：**
-```dart
-// 所有异步操作自动获得：
-// 1. 追踪ID关联
-await someAsyncOperation();  // 自动获得追踪ID
-
-// 2. 请求取消
-class MyViewModel extends BaseViewModel {
-  @override
-  void onDispose() {
-    // 此Zone中的所有HTTP请求自动取消
-    super.onDispose();
-  }
-}
-
-// 3. 性能跟踪
-ZoneManager.mark('用户数据加载');  // 手动性能标记
-
-// 4. 错误处理
-try {
-  await riskyOperation();
-} catch (e, stackTrace) {
-  // 自动记录追踪ID
-  appLogger.e('操作失败', error: e, stackTrace: stackTrace);
-}
-```
-
-**手动Zone操作：**
-```dart
-// 在新Zone中运行特定操作
-final result = await ZoneManager.runOperation('user-login', () async {
-  return await authService.login(email, password);
-});
-
-// 获取当前追踪ID
-final traceId = ZoneManager.currentTraceId;
-
-// 获取当前取消令牌
-final cancelToken = ZoneManager.currentCancelToken;
-```
-
-### 10. 安全存储
-
-```dart
-// 安全存储敏感数据
-await SecureStorageUtil.write('auth_token', token);
-
-// 检索敏感数据
-final token = await SecureStorageUtil.read('auth_token');
-
-// 删除敏感数据
-await SecureStorageUtil.delete('auth_token');
-```
-
-## 🎯 目标用例
-- **企业应用**: 需要可靠、可扩展的架构。
-- **快速原型**: 快速设置标准化基础设施。
-- **多应用生态系统**: 在不同项目间共享统一技术栈。
-
-## 🔮 路线图
-- [ ] 支持Web和桌面平台。
-- [ ] 集成更多第三方监控服务（Sentry/Firebase）。
-- [ ] `CoreConfig`的可视化配置工具。
-- [ ] 增强网络层的单元测试覆盖率。
-
-## 🛠 要求
-- Flutter: `>=3.10.1`
-- Dart: `^3.10.1`
-
-## � 使用 ListenCore 的应用
-
-### ListenPortfolioFlutter
-一个使用 ListenCore 构建的综合投资组合管理应用程序，展示了框架在真实场景中的能力。
-
-**展示的功能：**
-- **MVI 架构**: 通过 ViewModel 和状态管理实现关注点分离
-- **生命周期管理**: 正确处理页面生命周期事件和资源清理
-- **网络层**: RESTful API 集成，支持自动令牌刷新和错误处理
-- **模拟服务器**: 本地开发环境下的真实 API 模拟
-- **日志系统**: 具有追踪 ID 关联的综合日志记录
-- **国际化**: 多语言支持和 i18n 集成
-
-**关键实现示例：**
-```dart
-// 使用 MVI 模式的 ViewModel
-class PortfolioViewModel with ViewModelMixin<PortfolioState, PortfolioIntent> {
-  @override
-  PortfolioState get state => _state;
-  @override
-  set state(PortfolioState value) => _state = value;
-  
-  @override
-  Future<void> onIntent(PortfolioIntent intent) async {
-    if (intent is LoadPortfolioIntent) {
-      await call(
-        _getPortfolioUseCase.execute(intent.userId),
-        onSuccess: (portfolio) => updateState(state.copyWith(portfolio: portfolio)),
-        showLoading: true,
-      );
-    }
-  }
-}
-
-// 生命周期管理的页面
-class PortfolioPage extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return BaseLifeCyclePage(
-      title: '投资组合',
-      viewModel: ref.watch(portfolioViewModelProvider),
-      body: (context, child) => PortfolioContent(),
-    );
-  }
-}
-```
-
-**🔗 [在 GitHub 上查看](https://github.com/listen2code/ListenPortfolioFlutter)**
-
-## � 许可证
-本项目采用MIT许可证 - 详情请参阅 [LICENSE](LICENSE) 文件。
-
 ---
 
 # 日本語
+
+ListenCore は `ListenPortfolioFlutter` から切り出した再利用可能な基盤レイヤーです。
+主な対象は、ライフサイクル管理、ネットワーク、ルーティングの基礎機能、トレーシング、クラッシュ保護、共通ユーティリティといったビジネス非依存のアプリ基盤です。
+App の組み立て層、再利用 UI キット、完全なクロスプラットフォームフレームワークではありません。
 
 ## 🔗 リンク
 
@@ -1460,77 +436,115 @@ class PortfolioPage extends ConsumerWidget {
 
 ---
 
-## 🏗️ アーキテクチャ設計
+## 🎯 位置づけ
 
-### 設計原則
-- **ゼロビジネス結合**: ビジネスロジックを含まず、完全に汎用的で再利用可能。
-- **高凝集・低結合**: モジュラー設計により独立した抽出と公開が可能。
-- **高設定可能性**: 専用設定クラスによる柔軟な動作カスタマイズ。
-- **本番稼働準備**: 内蔵エラー処理、構造化ログ、パフォーマンス監視。
+ListenCore は `ListenPortfolioFlutter` の背後にある再利用可能な基盤レイヤーであり、対象は**ビジネス非依存のアプリ基盤機能**です。App 固有の組み立てロジック、デザインシステム部品、開発者向けオーバーレイ UI は責務に含みません。
 
-### モジュール構造
+この README では次を優先します：
+
+- **現在実装されている能力**
+- **明確なパッケージ境界**
+- **現状と目標状態の分離**
+
+## 🧱 現在のパッケージ範囲
+
+### 現在含まれるもの
+
+- **MVI 基盤**：`BaseViewModel`、`BaseState`、`BaseEffect`、provider registry
+- **ライフサイクル系ラッパー**：`BaseLifeCyclePage`、`BaseScaffoldPage`、`BaseMaterialApp`
+- **ネットワーク基盤**：`ApiClient`、`BaseRepository`、`BaseResponseModel`、`UseCase`
+- **トレーシングとクラッシュ保護**：`ZoneManager`、`CrashManager`、`Core.run()`
+- **ナビゲーション基盤**：`AppNav`、route interceptors、認証介入 hook
+- **環境と i18n**：`AppEnv`、`Translations`
+- **共通ユーティリティ**：ログ、event bus、validator、ストレージ、端末 / パッケージ情報、MockServer
+
+### ListenCore の責務ではないもの
+
+- App 固有の navigation / share effect
+- テーマ戦略や design tokens
+- 再利用 UI ウィジェット集
+- App レベルのデバッグ浮動ウィンドウ UI
+
+## 🔀 境界比較
+
+| レイヤー | 主な責務 | 責務ではないもの | 代表例 |
+|----------|----------|------------------|--------|
+| `ListenCore` | アプリ基盤のプリミティブと実行時基盤 | App 固有ページの組み立て、再利用 UI 部品集、ブランドテーマ戦略 | `BaseViewModel`、`ApiClient`、`AppNav`、`ZoneManager` |
+| `ListenUiKit` | 再利用可能な表示・入力・フィードバック部品 | ライフサイクル管理、ネットワーク、クラッシュ保護、環境初期化 | `CommonButton`、`CommonDialog`、`CommonEmptyView` |
+| App / shared レイヤー | ビジネス機能、画面構成、機能フロー、プロダクトルール | 共通ライブラリ内で汎用基盤や汎用 UI パッケージを再定義すること | 機能ページ、App 固有 provider、ドメインフロー |
+
+## 🏗️ モジュール構造
+
+```dart
+lib/
+├── base/           # ViewModel、ライフサイクルページ、ベースアプリラッパー
+├── config/         # ネットワーク / ログ / ストレージ / MockServer 設定
+├── env/            # 環境登録と切り替え
+├── errors/         # Exceptions と Failures
+├── i18n/           # 翻訳登録
+├── network/        # ApiClient、Repository 辅助、レスポンスモデル、UseCase
+├── route/          # ナビゲーション原語とインターセプター
+└── utils/          # ログ、クラッシュ保護、ストレージ、event bus、validator
 ```
-lib/core/
-├── base/           # アーキテクチャ層 (ViewModel, ライフサイクル, スキャフォールド)
-├── config/         # 設定管理 (ネットワーク, ログ, モック)
-├── env/            # 環境とシークレット管理
-├── errors/         # 統一エラーと失敗処理
-├── i18n/           # 国際化サポート
-├── network/        # ネットワーク層 (Dio, インターセプター, モックサーバー)
-├── route/          # ルーティングとナビゲーションインターセプター
-└── utils/          # ユーティリティ (ログ, ストレージ, ゾーン, クラッシュ保護)
-```
 
-## 🚀 主要モジュールと機能
+## ✅ 現在のハイライト
 
-### 1. 基本アーキテクチャとライフサイクル (`base/`)
-- **BaseLifeCyclePage**: 統一ページラッパー、以下を処理：
-  - 自動 `onInit`, `onReady`, `onResume`, `onPause`, `onVisible`, `onInVisible`。
-  - 内蔵 **ローディング**、**空**、**エラー** 状態管理。
-  - UIロックと自動リクエストキャンセルを防ぐ **セーフティタイマー**。
-- **BaseViewModel (MVI)**: 状態駆動ロジック、内蔵副作用管理。
-- **BaseMaterialApp**: `NavigatorKey`、`RouteObserver`、`ZoneManager` で事前設定。
+### 1. ライフサイクルと MVI 基盤
 
-### 2. ネットワークとモック (`network/`)
-- **ApiClient**: 以下の機能を持つ堅牢なHTTPクライアント：
-  - 自動トークン更新とリクエストキューイング。
-  - 分散トレーシングのためのX-Trace-Id相関。
-- **LocalMockServer**: アプリ内HTTPサーバー（ポート9898）、APIリクエストをローカルJSONアセットにマッピング。
-  - バージョニングサポート（例: `/v1/user` -> `json/v1/get/user.json`）。
-  - ネットワーク遅延をシミュレートし、リクエスト/レスポンス詳細をログ記録。
-- **UseCaseパターン**: `fpdart`の`Either<Failure, T>`を使用した標準化関数型エラー処理。
+- `BaseLifeCyclePage` は `onInit`、`onReady`、`onVisible`、`onResume`、`onDispose` などを協調します。
+- `onLoading` / `onEmpty` が渡された場合は対応する状態 UI を重ねられ、loading safety timeout も備えます。
+- `BaseViewModel` は intent 処理、副作用分配、リクエスト取消、イベント購読を担います。
 
-### 3. ログと診断 (`utils/`)
-- **ZoneManager**: 未処理の例外をキャプチャし、非同期パフォーマンスを追跡。
-- **AppLogger**: 重大度レベルとJSONフォーマットを持つ構造化ログ。
-- **LogManager**: リアルタイムログストリーミングとフィルタリングを備えたアプリ内浮動ログビューア。
-- **CrashManager**: クラッシュアップロード機能を備えた集中エラーレポート、セーフティモード、自動回復。
+### 2. ネットワーク基盤
 
-### 4. ストレージとユーティリティ (`utils/`)
-- **SpUtil**: JSONサポート付き`SharedPreferences`の同期ラッパー。
-- **SecureStorageUtil**: 機密データの暗号化ストレージ。
-- **デバイスとパッケージ情報**: ハードウェアとアプリメタデータへの迅速アクセス。
+- `ApiClient` は trace 伝播、認証注入、refresh retry queue、エラー変換を含む多段 Dio インターセプターを提供します。
+- `BaseRepository.safeCall()` は `Either<Failure, T>` で Repository 層のエラー処理を標準化します。
+- `LocalMockServer` はオフライン / デバッグ用途のローカル mock 配信を支えます。
 
-### 5. 高度な機能 (`utils/`)
-- **浮動ログビューア**: 浮動ウィンドウ、検索、エクスポート機能を備えたリアルタイムログ表示。
-- **クラッシュレポート**: 自動クラッシュ検出、レポート、監視サービスへのアップロード。
-- **イベントバス**: アプリケーション全体の分離されたイベント通信。
-- **キャッシュマネージャー**: TTLとメモリ管理を備えたインテリジェントキャッシュ。
-- **ゾーンベースのエラートラッキング**: トレースID相関を備えた包括的なエラートラッキング。
+### 3. 実行時基盤
+
+- `Core.init()` はストレージ、event bus、providers、ネットワーク設定、環境、i18n、ナビゲーション hook、ログ等を組み立てます。
+- `Core.run()` は受保護の Zone でアプリを実行し、UI へ委譲する前にクラッシュログを永続化します。
+- `ZoneManager` は `traceId` 伝播と軽量な性能マークをサポートします。
+
+### 4. 共通ユーティリティ
+
+- `LogManager` は構造化ログを保持し、App 層で消費されます。
+- `CrashManager` はローカル crash 持久化と Safe Mode reset hook を提供します。
+- `SpUtil`、`SecureStorageUtil`、`eventBus`、validator、端末 / パッケージ情報ユーティリティが含まれます。
+
+## ⚠️ 現在の制約
+
+- Web / Desktop サポートはまだ不完全です。
+- `LocalMockServer` は `dart:io` 依存のため Web 非対応です。
+- ルート引数はまだ完全な型安全ではありません。
+- `CacheManager` は現在、完全なデータキャッシュ基盤というよりキャッシュ削除ユーティリティに近いです。
+- テストカバレッジは成熟した再利用フレームワーク水準にはまだ届いていません。
+
+## 🔮 目標状態
+
+- 現在の Web / Desktop 状態を誇張せずに、段階的にプラットフォーム対応を広げる。
+- ライフサイクル、ルーティング、ネットワーク挙動に関するテストカバレッジを強化する。
+- 基盤機能、UI コンポーネント層、App 固有の組み立てコードの境界をさらに明確にする。
+
+## 🗂️ 保留中のバックアップ
+
+- 以前の README には、現在の実装以上にフレームワーク性を強く見せる表現が含まれていました。
+- 現在の README は、公開されている基盤機能と既知の制約に意図的に絞っています。
 
 ## 📦 始め方
 
 `listen_core` を `pubspec.yaml` に追加：
 
 ```bash
-dart pub add listen_core:0.0.3
+dart pub add listen_core:0.0.4
 ```
 
 または手動で追加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.3
+  listen_core: ^0.0.4
 ```
 
 **🔗 [pub.dev で見る](https://pub.dev/packages/listen_core)**
@@ -1541,14 +555,14 @@ dependencies:
 
 ```dart
 void main() async {
-  // 1. エラートラッキングのため管理ゾーンで実行
+  // 1. 受保護の Zone で実行してエラーを追跡する
   ZoneManager.run(() async {
     WidgetsFlutterBinding.ensureInitialized();
     
-    // 2. コアサービスを初期化
+    // 2. コアサービスを初期化する
     await Core.init(CoreConfig.defaultConfig());
     
-    // 3. デバッグモードでモックサーバーを起動
+    // 3. デバッグモードでモックサーバーを起動する
     if (kDebugMode) {
       await LocalMockServer.start();
     }
@@ -1578,16 +592,17 @@ class MyPage extends ConsumerWidget {
 ### 3. UseCaseを使用したネットワークリクエスト
 
 ```dart
-class GetUserUseCase extends BaseUseCase<User, String> {
+class GetUserUseCase extends UseCase<User, String> {
   final ApiClient _apiClient;
   
   GetUserUseCase(this._apiClient);
   
   @override
-  Future<Either<Failure, User>> execute(String userId) async {
+  Future<Either<Failure, User>> call({String? param}) async {
+    final userId = param!;
     return await _apiClient.get('/users/$userId').then(
       (response) => Right(User.fromJson(response.data)),
-      onError: (error) => Left(ServerApiFailure('ユーザーの取得に失敗しました')),
+      onError: (error) => Left(ServerApiFailure('ユーザー取得に失敗しました')),
     );
   }
 }
@@ -1596,6 +611,7 @@ class GetUserUseCase extends BaseUseCase<User, String> {
 ### 4. イベントバス通信
 
 ```dart
+// イベントを定義する
 // イベントを定義
 class UserUpdatedEvent extends BaseEvent {
   final User user;
