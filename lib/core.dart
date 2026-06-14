@@ -13,6 +13,7 @@ export 'core_initializer.dart';
 export 'env/app_env.dart';
 export 'errors/exceptions.dart';
 export 'errors/failures.dart';
+export 'errors/error_mapper.dart';
 export 'i18n/translations.dart';
 export 'network/api_client.dart';
 export 'network/base_repository.dart';

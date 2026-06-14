@@ -652,12 +652,13 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// - Other failures: Shows error message
   @protected
   void handleFailure(Failure failure) {
-    if (failure is AuthFailure) {
-      emitEffect(LogoutEffect(message: failure.message));
-    } else if (failure is ServerApiFailure) {
-      emitEffect(MessageEffect.dialog(failure.message, title: "API Error"));
+    final mappedFailure = ErrorMapper.map(failure);
+    if (mappedFailure is AuthFailure) {
+      emitEffect(LogoutEffect(message: mappedFailure.message));
+    } else if (mappedFailure is ServerApiFailure) {
+      emitEffect(MessageEffect.dialog(mappedFailure.message, title: "API Error"));
     } else {
-      emitEffect(MessageEffect.error(failure.message));
+      emitEffect(MessageEffect.error(mappedFailure.message));
     }
   }
 

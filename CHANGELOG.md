@@ -1,3 +1,9 @@
+## 0.0.6
+
+* **Error Codes Mapping**:
+    * Integrated a unified `ErrorMapper` to automatically intercept and localize network and system failure codes into multi-lingual (Chinese & Japanese) user-friendly messages.
+    * Integrated `ErrorMapper.map` inside `ViewModelMixin.handleFailure` to map all exceptions before rendering.
+
 ## 0.0.5
 
 * **Environment Update**:
