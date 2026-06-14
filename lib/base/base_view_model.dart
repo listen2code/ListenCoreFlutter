@@ -608,7 +608,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// Helper method to handle Either results.
   /// 
   /// This method provides a convenient way to process Either results
-  /// from use cases or other operations that return Either<Failure, T>.
+  /// from use cases or other operations that return `Either<Failure, T>`.
   /// 
   /// [T] is the success type.
   /// [result] is the Either result to handle.

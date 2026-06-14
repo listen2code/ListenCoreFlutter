@@ -1,3 +1,10 @@
+## 0.0.5
+
+* **Environment Update**:
+    * Upgraded environment SDK constraints to Dart `^3.12.1` to support Flutter `3.44.1`.
+* **Code Quality**:
+    * Fixed HTML conflict warnings in `BaseViewModel` and `SpUtil` doc comments.
+
 ## 0.0.4
 
 * **Documentation**:
