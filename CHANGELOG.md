@@ -1,3 +1,8 @@
+## 0.0.7
+
+* **Route Navigation Enhancements**:
+    * Refined generic type constraints (`T extends Object?`) for `AppNav` methods (`to`, `off`, `offAll`, `back`) to ensure compatibility with strict Dart type inference rules.
+
 ## 0.0.6
 
 * **Error Codes Mapping**:

@@ -71,7 +71,7 @@ class AppNav {
     return _buildPageRoute(name, settings.arguments);
   }
 
-  static Future<T?>? to<T>(dynamic target, {bool needLogin = false, Object? arguments}) {
+  static Future<T?>? to<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
     final completer = Completer<T?>();
 
     tryLogin(
@@ -92,7 +92,7 @@ class AppNav {
     return completer.future;
   }
 
-  static Future<T?>? off<T>(dynamic target, {bool needLogin = false, Object? arguments}) {
+  static Future<T?>? off<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
     final completer = Completer<T?>();
 
     tryLogin(
@@ -116,7 +116,7 @@ class AppNav {
   /// Navigates to a target and removes all previous routes from the stack.
   /// If [isReplace] is true, creates a new route and replaces the entire stack.
   /// If [isReplace] is false, pops until the target route is reached (target must exist in stack).
-  static Future<T?>? offAll<T>(
+  static Future<T?>? offAll<T extends Object?>(
     dynamic target, {
     bool needLogin = false,
     bool isReplace = true,
@@ -153,7 +153,7 @@ class AppNav {
     return completer.future;
   }
 
-  static void back<T>([T? result]) => AppNavConfig.navigatorKey.currentState?.pop(result);
+  static void back<T extends Object?>([T? result]) => AppNavConfig.navigatorKey.currentState?.pop(result);
 
   /// Internal helper to resolve target and extract URI parameters into RouteSettings.
   static Route<T>? _resolveRoute<T>(dynamic target, Object? arguments) {
