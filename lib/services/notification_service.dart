@@ -43,4 +43,10 @@ abstract class INotificationService {
 
   /// Stream of messages opened by user (which wakes app from background or terminated states)
   Stream<NotificationPayload> get onMessageOpenedApp;
+
+  /// Subscribes the device to a specific notification topic.
+  Future<void> subscribeToTopic(String topic);
+
+  /// Unsubscribes the device from a specific notification topic.
+  Future<void> unsubscribeFromTopic(String topic);
 }

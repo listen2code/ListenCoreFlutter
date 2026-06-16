@@ -1,3 +1,8 @@
+## 0.0.9
+
+* **Push Notification Enhancements**:
+    * Added `subscribeToTopic` and `unsubscribeFromTopic` to `INotificationService` interface.
+
 ## 0.0.8
 
 * **Push Notification Service Abstraction**:
