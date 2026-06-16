@@ -53,6 +53,7 @@ mixin BaseRepository {
 
       return await _handleFailureFallback(failure, getCached, useCacheCondition);
     } on DioException catch (e) {
+      appLogger.e('Repository DioException: $e');
       return await _handleFailureFallback(_mapDioException(e), getCached, useCacheCondition);
     } on TypeError catch (e, t) {
       appLogger.e('Repository Data Type Mismatch: $e \n$t');
