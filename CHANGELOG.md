@@ -1,3 +1,9 @@
+## 0.0.8
+
+* **Push Notification Service Abstraction**:
+    * Added `INotificationService` interface and `NotificationPayload` class under `lib/services/notification_service.dart`.
+    * Translated all code comments in the notification service module to English.
+
 ## 0.0.7
 
 * **Route Navigation Enhancements**:

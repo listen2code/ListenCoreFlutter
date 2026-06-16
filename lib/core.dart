@@ -35,3 +35,4 @@ export 'utils/secure_storage_util.dart';
 export 'utils/sp_util.dart';
 export 'utils/validators.dart';
 export 'utils/zone_manager.dart';
+export 'services/notification_service.dart';
