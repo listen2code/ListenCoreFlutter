@@ -48,6 +48,9 @@ class AppNav {
   /// Global snapshot of the currently active route's arguments.
   static Object? _currentArgs;
 
+  @visibleForTesting
+  static set currentArgs(Object? args) => _currentArgs = args;
+
   /// Combined observer for both Lifecycle tracking and Argument syncing.
   static final RouteObserver<ModalRoute<void>> observer = _AppNavObserver();
 
