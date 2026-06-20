@@ -1,3 +1,10 @@
+## 0.0.10
+
+* **ViewModel Native Lifecycle Hook**:
+    * Integrated with Riverpod's `ref.onDispose` hook to handle resource cleanup natively when the provider is unmounted, rather than relying on widget page disposals. This resolves issues when the same page is pushed multiple times onto the navigation stack.
+    * Changed `onBindEffect` to return a `StreamSubscription<BaseEffect>`, allowing UI widgets to manage and cancel their own subscriptions upon disposal to prevent page-level memory leaks.
+    * Added `currentArgs` visibleForTesting setter to `AppNav` to ease route parameter mocking in unit tests.
+
 ## 0.0.9
 
 * **Push Notification Enhancements**:

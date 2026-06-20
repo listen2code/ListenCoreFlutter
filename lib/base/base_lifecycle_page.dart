@@ -105,6 +105,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
   bool _isViewVisible = false; // Tracks physical visibility in viewport
   bool _isReady = false; // Tracks if onReady has been called
   BaseViewModel? _viewModel;
+  StreamSubscription<BaseEffect>? _effectSubscription;
 
   // Added to track state transitions for filtering onInactive calls.
   AppLifecycleState? _lastAppState;
@@ -130,7 +131,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 
     // Bind effects: ViewModel manages the subscription lifecycle internally.
     if (_viewModel != null) {
-      _viewModel!.onBindEffect(_handleEffect);
+      _effectSubscription = _viewModel!.onBindEffect(_handleEffect);
     }
 
     _routeObserver = _RouteAwareProxy(
@@ -265,6 +266,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 
   @override
   void dispose() {
+    _effectSubscription?.cancel();
     _loadingSafetyTimer?.cancel();
     _isInternalLoading.dispose();
     _isInternalEmpty.dispose();
