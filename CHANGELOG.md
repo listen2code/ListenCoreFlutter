@@ -1,3 +1,8 @@
+## 0.0.11
+
+* **ViewModel Log Fix**:
+    * Fix runtimeType.toString to element.provider
+
 ## 0.0.10
 
 * **ViewModel Native Lifecycle Hook**:
