@@ -295,6 +295,38 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   set state(S value);
 
+  String? _cachedTag;
+
+  /// A log tag representing the name of this ViewModel.
+  ///
+  /// By default, it tries to extract the Riverpod provider name (converting it to PascalCase
+  /// to match the class name format, e.g. 'settingsViewModelProvider' -> 'SettingsViewModel').
+  /// This ensures readable logs even in release builds where class names are obfuscated.
+  /// If it fails or is not managed by Riverpod, it falls back to [runtimeType.toString()].
+  String get tag {
+    if (_cachedTag != null) return _cachedTag!;
+    try {
+      final dynamicSelf = this as dynamic;
+      final providerRef = dynamicSelf.ref;
+      if (providerRef != null) {
+        final element = providerRef.element;
+        final provider = element.provider;
+        final name = provider.name;
+        if (name != null && name is String && name.isNotEmpty) {
+          var cleanName = name;
+          if (cleanName.endsWith('Provider')) {
+            cleanName = cleanName.substring(0, cleanName.length - 8);
+          }
+          if (cleanName.isNotEmpty) {
+            _cachedTag = cleanName[0].toUpperCase() + cleanName.substring(1);
+            return _cachedTag!;
+          }
+        }
+      }
+    } catch (_) {}
+    return runtimeType.toString();
+  }
+
   /// Internal controller for managing effect streams.
   ///
   /// This broadcast stream controller emits one-time UI effects
@@ -422,7 +454,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// ```
   @protected
   void onStateChanged(S oldState, S newState) {
-    appLogger.d('${runtimeType.toString()}: [STATE] $oldState -> $newState');
+    appLogger.d('$tag: [STATE] $oldState -> $newState');
   }
 
   /// Emits a one-time UI effect.
@@ -441,7 +473,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// ```
   @override
   void emitEffect(BaseEffect effect) {
-    appLogger.d('${runtimeType.toString()}: [EFFECT] -> ${effect.toString()}');
+    appLogger.d('$tag: [EFFECT] -> ${effect.toString()}');
     _effectController.add(effect);
   }
 
@@ -691,7 +723,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// ```
   @override
   void cancelRequests(String reason) {
-    appLogger.i('${runtimeType.toString()} cancelRequests(${_cancelToken.isCancelled}) $reason');
+    appLogger.i('$tag cancelRequests(${_cancelToken.isCancelled}) $reason');
     if (!_cancelToken.isCancelled) {
       _cancelToken.cancel(reason);
     }
@@ -705,7 +737,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   void onInit() {
     _registerRiverpodDispose();
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInit');
+    appLogger.i('$tag: [LIFECYCLE] -> onInit');
   }
 
   /// Called after the widget has been built and is ready.
@@ -715,7 +747,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// initialized. The method is logged for debugging purposes.
   @override
   void onReady() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onReady');
+    appLogger.i('$tag: [LIFECYCLE] -> onReady');
   }
 
   /// Called when the page becomes visible to the user.
@@ -725,7 +757,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// that should only run when the page is visible. The method is logged.
   @override
   void onVisible() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onVisible');
+    appLogger.i('$tag: [LIFECYCLE] -> onVisible');
   }
 
   /// Called when the page is no longer visible to the user.
@@ -735,7 +767,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// that are only needed when the page is visible. The method is logged.
   @override
   void onInVisible() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInVisible');
+    appLogger.i('$tag: [LIFECYCLE] -> onInVisible');
   }
 
   /// Called when the widget physically enters the viewport.
@@ -745,7 +777,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// optimizations. The method is logged for debugging purposes.
   @override
   void onViewVisible() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onViewVisible');
+    appLogger.i('$tag: [LIFECYCLE] -> onViewVisible');
   }
 
   /// Called when the widget physically leaves the viewport.
@@ -755,7 +787,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// optimizations. The method is logged for debugging purposes.
   @override
   void onViewInVisible() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onViewInVisible');
+    appLogger.i('$tag: [LIFECYCLE] -> onViewInVisible');
   }
 
   /// Called when the app is resumed from background.
@@ -765,7 +797,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// tasks that should run when the app becomes active. The method is logged.
   @override
   void onResume() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onResume');
+    appLogger.i('$tag: [LIFECYCLE] -> onResume');
   }
 
   /// Called when the app is paused or sent to background.
@@ -775,7 +807,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// tasks that should run when the app becomes inactive. The method is logged.
   @override
   void onPause() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onPause');
+    appLogger.i('$tag: [LIFECYCLE] -> onPause');
   }
 
   /// Called when the app becomes inactive.
@@ -785,7 +817,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// stop when the app is not actively being used. The method is logged.
   @override
   void onInactive() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onInactive');
+    appLogger.i('$tag: [LIFECYCLE] -> onInactive');
   }
 
   /// Called when the page is about to be disposed.
@@ -800,7 +832,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// Performs actual ViewModel resource disposal.
   /// This should only be called when the ViewModel is genuinely being destroyed.
   void _performRealDispose(String reason) {
-    appLogger.i('${runtimeType.toString()}: [REAL DISPOSE] -> Releasing resources ($reason)');
+    appLogger.i('$tag: [REAL DISPOSE] -> Releasing resources ($reason)');
     cancelRequests(reason);
 
     // Automatically cancel all event bus subscriptions to prevent memory leaks.
@@ -822,7 +854,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
           _performRealDispose('Riverpod Provider Disposed');
         });
         _riverpodDisposeRegistered = true;
-        appLogger.d('${runtimeType.toString()}: Registered ref.onDispose hook');
+        appLogger.d('$tag: Registered ref.onDispose hook');
       }
     } catch (_) {
       // Not a Riverpod Notifier, will fallback to widget-lifecycle based disposal
@@ -841,7 +873,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   @mustCallSuper
   void onDispose() {
-    appLogger.i('${runtimeType.toString()}: [LIFECYCLE] -> onDispose (Widget Disposed)');
+    appLogger.i('$tag: [LIFECYCLE] -> onDispose (Widget Disposed)');
     if (!_isRiverpodManaged) {
       _performRealDispose('Widget Disposed (Fallback)');
     }
@@ -859,7 +891,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// Returns a Future that completes when the intent processing is done.
   @protected
   Future<void> dispatch(dynamic intent, FutureOr<void> Function() handler, {bool useZone = true}) {
-    final tag = runtimeType.toString();
+    final tag = this.tag;
 
     /// Called when intent processing starts.
     ///
