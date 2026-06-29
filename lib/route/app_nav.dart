@@ -48,6 +48,12 @@ class AppNav {
   /// Global snapshot of the currently active route's arguments.
   static Object? _currentArgs;
 
+  static String? _currentRouteName;
+  static String? get currentRouteName => _currentRouteName;
+
+  @visibleForTesting
+  static set currentRouteName(String? routeName) => _currentRouteName = routeName;
+
   @visibleForTesting
   static set currentArgs(Object? args) => _currentArgs = args;
 
@@ -247,17 +253,20 @@ class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
     AppNav._currentArgs = route.settings.arguments;
+    AppNav._currentRouteName = route.settings.name;
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
     AppNav._currentArgs = previousRoute?.settings.arguments;
+    AppNav._currentRouteName = previousRoute?.settings.name;
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
     AppNav._currentArgs = newRoute?.settings.arguments;
+    AppNav._currentRouteName = newRoute?.settings.name;
   }
 }

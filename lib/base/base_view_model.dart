@@ -474,6 +474,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   void emitEffect(BaseEffect effect) {
     appLogger.d('$tag: [EFFECT] -> ${effect.toString()}');
+    MviPlaybackObserver.onEffectEmitted?.call(tag, effect);
     _effectController.add(effect);
   }
 
@@ -737,6 +738,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   void onInit() {
     _registerRiverpodDispose();
+    ActiveViewModels.register(tag, this);
     appLogger.i('$tag: [LIFECYCLE] -> onInit');
   }
 
@@ -833,6 +835,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// This should only be called when the ViewModel is genuinely being destroyed.
   void _performRealDispose(String reason) {
     appLogger.i('$tag: [REAL DISPOSE] -> Releasing resources ($reason)');
+    ActiveViewModels.unregister(tag);
     cancelRequests(reason);
 
     // Automatically cancel all event bus subscriptions to prevent memory leaks.
@@ -898,6 +901,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     /// Logs the intent and marks the start time for performance tracking.
     void onStart() {
       appLogger.d('$tag: [INTENT] -> $intent');
+      MviPlaybackObserver.onIntentDispatched?.call(tag, intent);
       ZoneManager.mark('Intent [$intent] Started');
     }
 
@@ -947,4 +951,40 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
       return execute();
     }, cancelToken: cancelToken);
   }
+}
+
+typedef IntentObserver = void Function(String viewModelTag, dynamic intent);
+typedef EffectObserver = void Function(String viewModelTag, dynamic effect);
+
+class MviPlaybackObserver {
+  static IntentObserver? onIntentDispatched;
+  static EffectObserver? onEffectEmitted;
+}
+
+class ActiveViewModels {
+  static final Map<String, BaseViewModel> _active = {};
+  static final Map<String, String> _tagToRoute = {};
+
+  static void register(String tag, BaseViewModel viewModel) {
+    _active[tag] = viewModel;
+    final currentRoute = AppNav.currentRouteName;
+    if (currentRoute != null) {
+      _tagToRoute[tag] = currentRoute;
+    }
+  }
+
+  static void unregister(String tag) {
+    _active.remove(tag);
+    _tagToRoute.remove(tag);
+  }
+
+  static BaseViewModel? get(String tag) {
+    return _active[tag];
+  }
+
+  static String? getRoute(String tag) {
+    return _tagToRoute[tag];
+  }
+
+  static Map<String, BaseViewModel> get all => Map.unmodifiable(_active);
 }

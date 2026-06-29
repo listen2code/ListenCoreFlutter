@@ -1,3 +1,7 @@
+## 0.0.12
+
+* **MviPlaybackObserver**:
+
 ## 0.0.11
 
 * **ViewModel Log Fix**:
