@@ -475,7 +475,9 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   void emitEffect(BaseEffect effect) {
     appLogger.d('$tag: [EFFECT] -> ${effect.toString()}');
     MviPlaybackObserver.onEffectEmitted?.call(tag, effect);
-    _effectController.add(effect);
+    if (!_effectController.isClosed) {
+      _effectController.add(effect);
+    }
   }
 
   /// Handles standard UI effects.
@@ -876,6 +878,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   @mustCallSuper
   void onDispose() {
+    emitEffect(LoadingEffect(false));
     appLogger.i('$tag: [LIFECYCLE] -> onDispose (Widget Disposed)');
     if (!_isRiverpodManaged) {
       _performRealDispose('Widget Disposed (Fallback)');

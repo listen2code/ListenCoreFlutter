@@ -1,5 +1,9 @@
 ## 0.0.12
 
+* **Fix Bug:effectController.isClosed**:
+
+## 0.0.12
+
 * **MviPlaybackObserver**:
 
 ## 0.0.11
