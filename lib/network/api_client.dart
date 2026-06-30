@@ -5,15 +5,12 @@ import 'package:dio/dio.dart';
 
 import '../core.dart';
 
-
-
-
 /// HTTP status codes used throughout the application.
-/// 
+///
 /// This class provides centralized management of HTTP status codes
 /// that can be configured through [NetworkConfig]. Default values follow
 /// standard HTTP conventions.
-/// 
+///
 /// **Example:**
 /// ```dart
 /// if (response.statusCode == HttpCode.ok) {
@@ -24,24 +21,24 @@ import '../core.dart';
 /// ```
 class HttpCode {
   HttpCode._();
-  
+
   /// HTTP 200 - OK status code.
   static int ok = 200;
-  
+
   /// HTTP 401 - Unauthorized status code.
   static int unauthorized = 401;
-  
+
   /// HTTP 403 - Forbidden status code.
   static int forbidden = 403;
-  
+
   /// HTTP 500 - Internal Server Error status code.
   static int internalServerError = 500;
 
   /// Updates HTTP status codes from network configuration.
-  /// 
+  ///
   /// This method is called during initialization to apply custom
   /// status code values from the provided configuration.
-  /// 
+  ///
   /// [config] is the network configuration containing custom status codes.
   static void updateConfig(NetworkConfig config) {
     ok = config.ok;
@@ -52,12 +49,12 @@ class HttpCode {
 }
 
 /// Interface for delegating API request lifecycle logic to the shared layer.
-/// 
+///
 /// This interface allows customization of request handling behavior,
 /// particularly for authentication, tracing, and token management.
 /// Implementations can be provided to [ApiClient] to customize how
 /// requests are processed.
-/// 
+///
 /// **Example:**
 /// ```dart
 /// class CustomApiDelegate implements IApiInterceptorDelegate {
@@ -68,7 +65,7 @@ class HttpCode {
 ///       options.headers['Authorization'] = 'Bearer $token';
 ///     }
 ///   }
-///   
+///
 ///   @override
 ///   Future<bool> onRefreshToken() async {
 ///     return await _authService.refreshToken();
@@ -77,32 +74,32 @@ class HttpCode {
 /// ```
 abstract class IApiInterceptorDelegate {
   /// Injects authentication headers into the request.
-  /// 
+  ///
   /// This method is called before each request to add authentication
   /// information like bearer tokens, API keys, or other auth headers.
-  /// 
+  ///
   /// [options] is the request options that can be modified with auth headers.
-  /// 
+  ///
   /// **Throws:** May throw exceptions if authentication fails.
   Future<void> onInjectAuthHeader(RequestOptions options);
 
   /// Injects tracing identifiers into the request headers.
-  /// 
+  ///
   /// This method adds correlation IDs and other tracing information
   /// to enable distributed tracing across microservices.
-  /// 
+  ///
   /// [options] is the request options that will be modified with tracing headers.
   /// [traceId] is the unique identifier for this request trace.
   void onInjectTraceHeader(RequestOptions options, String traceId);
 
   /// Handles token refresh logic when a 401 error occurs.
-  /// 
+  ///
   /// This method is called when the API returns a 401 Unauthorized
   /// response, indicating that the current token has expired or is invalid.
-  /// 
+  ///
   /// Returns `true` if the token was successfully refreshed and the request
   /// should be retried, `false` if the refresh failed and the request should fail.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// @override
@@ -119,10 +116,10 @@ abstract class IApiInterceptorDelegate {
 }
 
 /// A default, no-op implementation of the delegate to prevent null pointer issues.
-/// 
+///
 /// This implementation provides safe default behavior for all delegate methods.
 /// It's used as a fallback when no custom delegate is provided to [ApiClient].
-/// 
+///
 /// - Authentication: No headers are added
 /// - Tracing: X-Trace-Id header is added
 /// - Token refresh: Always returns false (no refresh attempt)
@@ -146,13 +143,13 @@ class _DefaultApiDelegate implements IApiInterceptorDelegate {
 }
 
 /// Creates and configures a single Dio instance for the entire application.
-/// 
+///
 /// This class provides a centralized HTTP client with built-in features:
 /// - Automatic token refresh and request queuing
 /// - X-Trace-Id correlation for distributed tracing
 /// - Request/response interceptors for logging and error handling
 /// - Configurable timeouts and retry logic
-/// 
+///
 /// **Example:**
 /// ```dart
 /// // Initialize with custom delegate
@@ -160,18 +157,18 @@ class _DefaultApiDelegate implements IApiInterceptorDelegate {
 ///   baseUrl: 'https://api.example.com',
 ///   delegate: CustomApiDelegate(),
 /// );
-/// 
+///
 /// // Make a request
 /// final response = await apiClient.get('/users/123');
 /// final user = User.fromJson(response.data);
-/// 
+///
 /// // Post data
 /// final result = await apiClient.post('/users', data: {
 ///   'name': 'John Doe',
 ///   'email': 'john@example.com',
 /// });
 /// ```
-/// 
+///
 /// **See Also:**
 /// - [IApiInterceptorDelegate] for custom request handling
 /// - [NetworkConfig] for HTTP client configuration
@@ -180,10 +177,10 @@ class ApiClient {
   ApiClient._();
 
   /// Key to specify that a request does not require authentication.
-  /// 
+  ///
   /// This constant can be used in the `extra` field of request options
   /// to bypass authentication for specific endpoints like public APIs.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// dio.get('/public/data', options: Options(extra: {ApiClient.kNoAuthKey: true}));
@@ -191,33 +188,33 @@ class ApiClient {
   static const String kNoAuthKey = 'no_auth';
 
   /// The delegate instance for handling API request lifecycle.
-  /// 
+  ///
   /// This delegate is used for authentication, tracing, and token refresh.
   /// Defaults to [_DefaultApiDelegate] if no custom delegate is set.
   static IApiInterceptorDelegate _delegate = _DefaultApiDelegate();
-  
+
   /// Network configuration for HTTP client settings.
-  /// 
+  ///
   /// Contains timeout values, base URLs, and other network-related settings.
   static NetworkConfig? _networkConfig;
 
   /// Gets the current delegate instance.
-  /// 
+  ///
   /// Returns the delegate used for handling API request lifecycle events.
   static IApiInterceptorDelegate get delegate => _delegate;
-  
+
   /// Gets the current network configuration.
-  /// 
+  ///
   /// Returns the network configuration, or null if not initialized.
   static NetworkConfig? get networkConfig => _networkConfig;
 
   /// Initializes the ApiClient with a concrete delegate implementation.
-  /// 
+  ///
   /// This method should be called once during app initialization to set up
   /// custom authentication and request handling behavior.
-  /// 
+  ///
   /// [delegate] is the custom delegate implementation for API request handling.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// ApiClient.init(CustomApiDelegate());
@@ -227,12 +224,12 @@ class ApiClient {
   }
 
   /// Initializes network configuration.
-  /// 
+  ///
   /// This method configures HTTP client settings like timeouts and base URLs.
   /// It also updates the HTTP status codes based on the provided configuration.
-  /// 
+  ///
   /// [config] is the network configuration containing HTTP client settings.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// ApiClient.initNetworkConfig(NetworkConfig(
@@ -246,16 +243,16 @@ class ApiClient {
   }
 
   /// The singleton Dio instance used for all HTTP requests.
-  /// 
+  ///
   /// This instance is configured with interceptors for authentication,
   /// logging, error handling, and zone management. It's initialized once
   /// when the class is first accessed.
   static final Dio _dio = _initDio();
 
   /// Gets the singleton Dio instance.
-  /// 
+  ///
   /// Returns the configured Dio instance for making HTTP requests.
-  /// 
+  ///
   /// **Example:**
   /// ```dart
   /// final response = await ApiClient.dio.get('/users');
@@ -263,16 +260,16 @@ class ApiClient {
   static Dio get dio => _dio;
 
   /// Initializes and configures the Dio instance with interceptors.
-  /// 
+  ///
   /// This method sets up the HTTP client with:
   /// - Timeouts from environment configuration
   /// - Default headers for JSON content
   /// - Interceptors for request/response processing
-  /// 
+  ///
   /// The interceptor order is critical for proper request/response flow:
   /// - Request: Zone -> Error -> Auth -> Logging (in order)
   /// - Error: Logging -> Auth -> Error -> Zone (reverse order)
-  /// 
+  ///
   /// Returns a configured Dio instance ready for use.
   static Dio _initDio() {
     final dio = Dio(
@@ -303,12 +300,12 @@ class ApiClient {
 }
 
 /// Interceptor for logging API requests and responses.
-/// 
+///
 /// This interceptor provides detailed logging of all HTTP traffic including:
 /// - Request method, URL, headers, and body
 /// - Response status code and data
 /// - Error information and response bodies
-/// 
+///
 /// All logs are formatted with pretty-printed JSON for better readability.
 class _LoggingInterceptor extends Interceptor {
   @override
@@ -519,6 +516,7 @@ class _ErrorInterceptor extends Interceptor {
       case DioExceptionType.cancel:
         exception = AppException('Request cancelled');
         break;
+      case DioExceptionType.transformTimeout:
       case DioExceptionType.unknown:
         exception = ServerException(err.toString());
     }
