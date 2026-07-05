@@ -60,6 +60,12 @@ class AppNav {
   /// Combined observer for both Lifecycle tracking and Argument syncing.
   static final RouteObserver<ModalRoute<void>> observer = _AppNavObserver();
 
+  /// Callback hook invoked when a route is pushed.
+  static void Function(Route<dynamic> route, Route<dynamic>? previousRoute)? onRoutePushed;
+
+  /// Callback hook invoked when a route is popped.
+  static void Function(Route<dynamic> route, Route<dynamic>? previousRoute)? onRoutePopped;
+
   /// Retrieves a parameter from the current global route state.
   /// Safely usable within initState as it doesn't require BuildContext.
   static T? getParam<T>(String key) {
@@ -254,6 +260,7 @@ class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
     super.didPush(route, previousRoute);
     AppNav._currentArgs = route.settings.arguments;
     AppNav._currentRouteName = route.settings.name;
+    AppNav.onRoutePushed?.call(route, previousRoute);
   }
 
   @override
@@ -261,6 +268,7 @@ class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
     super.didPop(route, previousRoute);
     AppNav._currentArgs = previousRoute?.settings.arguments;
     AppNav._currentRouteName = previousRoute?.settings.name;
+    AppNav.onRoutePopped?.call(route, previousRoute);
   }
 
   @override
