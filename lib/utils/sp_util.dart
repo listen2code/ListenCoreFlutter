@@ -42,8 +42,8 @@ class SpUtil {
       return prefs.setInt(fullKey, value);
     } else if (value is double) {
       return prefs.setDouble(fullKey, value);
-    } else if (value is List<String>) {
-      return prefs.setStringList(fullKey, value);
+    } else if (value is List) {
+      return prefs.setStringList(fullKey, List<String>.from(value));
     } else {
       // For complex objects, store as JSON string
       return prefs.setString(fullKey, jsonEncode(value));
@@ -107,5 +107,21 @@ class SpUtil {
   static Future<void> reload() async {
     final prefs = await _instance;
     await prefs.reload();
+  }
+
+  /// Get a value by key.
+  static dynamic get(String key) {
+    return _prefs?.get(_getKey(key));
+  }
+
+  /// Get all keys managed by SpUtil (with prefix removed).
+  static List<String> getKeys() {
+    if (_prefs == null) return [];
+    final keys = _prefs!.getKeys();
+    if (_prefix.isEmpty) return keys.toList();
+    return keys
+        .where((key) => key.startsWith(_prefix))
+        .map((key) => key.substring(_prefix.length))
+        .toList();
   }
 }
