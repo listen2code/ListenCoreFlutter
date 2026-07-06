@@ -1,3 +1,20 @@
+## 0.0.17
+
+- **Frame Performance Monitoring**:
+    - Created `FrameMonitor` to capture and analyze Flutter engine `FrameTiming`.
+    - Implemented adaptive vsync budget detection and jank tracking (standard and severe).
+    - Added real-time FPS calculation using Exponential Moving Average (EMA) for smoothing.
+    - Included periodic RSS memory sampling.
+- **Execution & Zone Tracing**:
+    - Enhanced `ZoneManager` to broadcast `ZonePerfRecord` events upon completion of asynchronous tasks.
+    - Introduced `PerfTraceStore` to maintain a capped history of structured execution timelines and milestones.
+- **High-Performance Utilities**:
+    - Implemented `RingBuffer`, a fixed-capacity circular buffer designed to minimize GC pressure during high-frequency telemetry collection.
+- **Core Integration**:
+    - Updated `lib/core.dart` to export new performance utilities: `FrameMonitor`, `PerfTraceStore`, and `RingBuffer`.
+    - Integrated reactive updates using `ValueNotifier` to drive performance overlays and debugging tools.
+
+
 ## 0.0.16
 
 * **AppNav: onRoutePushed, onRoutePopped**:

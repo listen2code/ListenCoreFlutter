@@ -5,6 +5,25 @@ import 'package:flutter/widgets.dart';
 import '../core.dart';
 import 'package:uuid/uuid.dart';
 
+/// Data record dispatched when a monitored zone completes execution.
+class ZonePerfRecord {
+  final String traceId;
+  final String label;
+  final String name;
+  final List<({String name, int duration})> stages;
+  final int totalMs;
+  final DateTime timestamp;
+
+  const ZonePerfRecord({
+    required this.traceId,
+    required this.label,
+    required this.name,
+    required this.stages,
+    required this.totalMs,
+    required this.timestamp,
+  });
+}
+
 /// Manages data stored in the current [Zone].
 /// This handles distributed tracing, request cancellation, and performance profiling.
 class ZoneManager {
@@ -33,6 +52,13 @@ class ZoneManager {
   static const String markFirstFrame = 'First Frame Rendered';
   static const String _markFinalize = '[Finalize]';
   static const String _detailsPrefix = " Details: ";
+
+  // --- Performance Event Bus ---
+  static final StreamController<ZonePerfRecord> _perfController =
+      StreamController<ZonePerfRecord>.broadcast();
+
+  /// Stream emitting performance trace reports upon zone completion.
+  static Stream<ZonePerfRecord> get onPerfTrace => _perfController.stream;
 
   /// Gets the current Trace ID from the Zone.
   static String get currentTraceId => Zone.current[_traceKey] ?? _noTraceId;
@@ -71,16 +97,15 @@ class ZoneManager {
         final result = body();
         if (result is Future) {
           return result.then(
-                (value) {
-                  if (!silent) _logSummary(id, perf, label: _labelIntent);
-                  return value;
-                },
-                onError: (e, s) {
-                  if (!silent) _logError(id, perf);
-                  throw e;
-                },
-              )
-              as T;
+            (value) {
+              if (!silent) _logSummary(id, perf, label: _labelIntent);
+              return value;
+            },
+            onError: (e, s) {
+              if (!silent) _logError(id, perf);
+              throw e;
+            },
+          ) as T;
         }
         if (!silent) _logSummary(id, perf, label: _labelIntent);
         return result;
@@ -88,7 +113,7 @@ class ZoneManager {
         if (!silent) _logError(id, perf);
         rethrow;
       }
-    }, zoneValues: {_traceKey: id, _cancelTokenKey: ?cancelToken, _perfKey: perf, ...?zoneValues});
+    }, zoneValues: {_traceKey: id, _cancelTokenKey: cancelToken, _perfKey: perf, ...?zoneValues});
   }
 
   /// Runs the [body] in a protected Zone that catches unhandled asynchronous errors.
@@ -118,7 +143,7 @@ class ZoneManager {
         appLogger.e('Unhandled error in Zone [$id]: $error', error: error, stackTrace: stack);
         onError?.call(error, stack);
       },
-      zoneValues: {_traceKey: id, _cancelTokenKey: ?cancelToken, _perfKey: perf, ...?zoneValues},
+      zoneValues: {_traceKey: id, _cancelTokenKey: cancelToken, _perfKey: perf, ...?zoneValues},
     );
   }
 
@@ -136,6 +161,9 @@ class ZoneManager {
     if (summary.isNotEmpty) {
       // Use LogManager.summaryTag instead of hardcoded ':'
       appLogger.d('$label ${LogManager.summaryTag}: $summary');
+
+      // Dispatch performance record via controller
+      _dispatchTrace(id, perf, label);
     }
   }
 
@@ -144,6 +172,38 @@ class ZoneManager {
     // Use LogManager.termTag for identifying termination due to error
     final details = summary.isNotEmpty ? "$_detailsPrefix$summary" : "";
     appLogger.d('${LogManager.termTag}.$details');
+
+    // Also dispatch error performance record
+    _dispatchTrace(id, perf, 'Error:$id');
+  }
+
+  static void _dispatchTrace(String id, _PerfTrace perf, String label) {
+    final name = _extractName(id, label);
+    
+    // Assemble chronological stages including the final stage
+    final stagesList = List<({String name, int duration})>.from(perf._stages);
+    final totalMs = perf._stopwatch.elapsedMilliseconds;
+    final int finalStageDuration = totalMs - perf._lastMarkTime;
+    if (finalStageDuration > 0) {
+      stagesList.add((name: _markFinalize, duration: finalStageDuration));
+    }
+
+    _perfController.add(ZonePerfRecord(
+      traceId: id,
+      label: label,
+      name: name,
+      stages: List.unmodifiable(stagesList),
+      totalMs: totalMs,
+      timestamp: DateTime.now(),
+    ));
+  }
+
+  static String _extractName(String id, String label) {
+    if (label == _labelPageRender && id.startsWith(_prefixPage)) {
+      final parts = id.substring(_prefixPage.length).split('-');
+      if (parts.isNotEmpty) return parts.first;
+    }
+    return id;
   }
 }
 
@@ -179,6 +239,12 @@ class _PerfTrace {
   // --- Formatting Constants ---
   static const String _unit = 'ms';
   static const String _totalLabel = 'Total (Sum)';
+
+  /// Exposes read-only chronological stages.
+  List<({String name, int duration})> get stages => List.unmodifiable(_stages);
+
+  /// Exposes total elapsed duration.
+  int get elapsedMs => _stopwatch.elapsedMilliseconds;
 
   void _mark(String stage) {
     final int now = _stopwatch.elapsedMilliseconds;

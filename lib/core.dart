@@ -35,4 +35,7 @@ export 'utils/secure_storage_util.dart';
 export 'utils/sp_util.dart';
 export 'utils/validators.dart';
 export 'utils/zone_manager.dart';
+export 'utils/ring_buffer.dart';
+export 'utils/frame_monitor.dart';
+export 'utils/perf_trace_store.dart';
 export 'services/notification_service.dart';
