@@ -1,24 +1,21 @@
 import 'package:flutter/foundation.dart';
-import 'zone_manager.dart';
+import '../utils/zone_manager.dart';
 
 /// Single-stage timing data within a performance trace.
 class PerfStage {
   final String name;
   final int durationMs;
 
-  const PerfStage({
-    required this.name,
-    required this.durationMs,
-  });
+  const PerfStage({required this.name, required this.durationMs});
 }
 
 /// DTO container representing a structured execution segment trace.
 class PerfTraceEntry {
   final String traceId;
-  final String label;           // e.g., "Intent" / "Page Render" / "Task"
-  final String name;            // e.g., "LoadProjectsIntent" / "page-SettingsPage"
+  final String label; // e.g., "Intent" / "Page Render" / "Task"
+  final String name; // e.g., "LoadProjectsIntent" / "page-SettingsPage"
   final List<PerfStage> stages; // Internal milestones and elapsed times
-  final int totalMs;            // Total trace lifetime duration
+  final int totalMs; // Total trace lifetime duration
   final DateTime timestamp;
 
   const PerfTraceEntry({
@@ -38,7 +35,7 @@ class PerfTraceEntry {
 class PerfTraceStore {
   static final PerfTraceStore _instance = PerfTraceStore._();
   static PerfTraceStore get instance => _instance;
-  
+
   PerfTraceStore._() {
     // Automatically subscribe to core ZoneManager performance notifications
     ZoneManager.onPerfTrace.listen((record) {
@@ -90,7 +87,7 @@ class PerfTraceStore {
       _entries.removeAt(0); // Discard the oldest record
     }
     _entries.add(entry);
-    
+
     // Force reactive UI refresh
     traces.value = List.unmodifiable(_entries);
   }
