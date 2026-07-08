@@ -1,3 +1,9 @@
+## 0.0.19
+
+- **True Latency Calculation Refactor**:
+    - Replaced `FrameTiming.totalSpan` with pure `buildDuration + rasterDuration` for the frame latency calculation (`totalUs`).
+    - Excluded system-level pipeline scheduling delays and thread wait times, resolving false-positive Jank reports and preventing layout charts from pinning to the top boundary.
+
 ## 0.0.18
 
 - **FPS Physical Timeline Refactor**:

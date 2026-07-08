@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:io' show ProcessInfo;
+import 'dart:math' as math;
+import 'dart:io' show ProcessInfo, Platform;
 import 'dart:ui' show FramePhase, FrameTiming;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -174,6 +175,12 @@ class FrameMonitor {
       // Calculate adaptive vsync budget from current rendering pipeline
       final currentVsyncStart = timing.timestampInMicroseconds(FramePhase.vsyncStart);
       int budgetUs = defaultBudgetUs;
+      bool isIsolatedNormalFrame = false;
+
+      // In Debug Mode, Dart VM and assertion checks multiply render overhead by 3-4x.
+      // We scale the baseline budget line for normal/isolated check to avoid debug-only false-positive metrics,
+      // while preserving strict hardware budgets for unit tests in testing environment.
+      final bool isRunningInTest = Platform.environment.containsKey('FLUTTER_TEST');
 
       if (_lastVsyncStart != null) {
         final intervalUs = currentVsyncStart - _lastVsyncStart!.inMicroseconds;
@@ -181,13 +188,25 @@ class FrameMonitor {
           // Calculate dynamically if interval makes physical sense (3ms to 100ms)
           // 8.3ms -> 120Hz, 11.1ms -> 90Hz, 16.6ms -> 60Hz
           budgetUs = intervalUs;
+        } else if (intervalUs >= 100000 && totalUs <= (kDebugMode && !isRunningInTest ? budgetUs * 3 : budgetUs)) {
+          // If interval is larger than 100ms and the frame rendered within budget,
+          // it's an isolated normal frame triggered by idle state refresh (e.g. APM UI rebuild).
+          // We bypass it to prevent ring buffer metric pollution while keeping real janks.
+          isIsolatedNormalFrame = true;
         }
       }
       _lastVsyncStart = Duration(microseconds: currentVsyncStart);
 
-      // Jank Detection using adaptive budget
-      final isJank = totalUs > budgetUs;
-      final isSevereJank = totalUs > (budgetUs * 2);
+      if (isIsolatedNormalFrame) {
+        continue;
+      }
+
+      // Compute active threshold using updated budgetUs
+      final int activeThresholdUs = (kDebugMode && !isRunningInTest) ? (budgetUs * 3) : budgetUs;
+
+      // Jank Detection using active threshold under debug mode
+      final isJank = totalUs > activeThresholdUs;
+      final isSevereJank = totalUs > (activeThresholdUs * 2);
 
       if (isJank) _jankCount++;
       if (isSevereJank) _severeJankCount++;
