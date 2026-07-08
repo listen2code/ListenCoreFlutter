@@ -141,6 +141,22 @@ class FrameMonitor {
     _throttledNotify(force: true);
   }
 
+  /// Core callback invoked by Flutter Scheduler when new frame pipeline timings are dispatched.
+  /// Handles cold-start warmups, adaptive vsync interval calculation, and Jank classification.
+  ///
+  /// ### [Demo Data Scenario Example - 120Hz LTPO screen adaptive budget check]
+  /// 1. **Vsync Base Ticks Input**:
+  ///    * Frame N-1: `vsyncStart` = `100,000` us
+  ///    * Frame N: `vsyncStart` = `108,333` us
+  ///    * Ad-hoc calculation of refresh interval: `108,333` - `100,000` = `8,333` us (8.33ms delta, ~120Hz).
+  /// 2. **Adaptive Budgeting**:
+  ///    * The target `budgetUs` scales down to `8,333` us to match the current physical pipeline.
+  /// 3. **Jank Classification**:
+  ///    * If Frame N total span (`totalUs`) = `10,500` us:
+  ///      * `isJank` = `10,500` > `8,333` -> **true** (Frame missed the 120Hz frame deadline).
+  ///      * `isSevereJank` = `10,500` > (`8,333` * 2 = `16,666` us) -> **false** (Missed 1 vsync tick, but not 2).
+  ///    * If it were evaluated against a static 60Hz threshold (16.6ms), it would be incorrectly marked as normal,
+  ///      but our physical adaptive algorithm correctly catches this 120Hz stutter.
   void _onTimings(List<FrameTiming> timings) {
     if (!_isRunning) return;
 
@@ -224,6 +240,46 @@ class FrameMonitor {
   /// frame callback dispatches. Using wall-clock DateTime on batch callbacks results in near-zero
   /// time differences (spanUs ~ 0) for consecutive frames, causing artificial FPS spikes up to thousands.
   /// Using vsyncStartUs guarantees that the delta between frames is lowerbounded by the hardware refresh rate.
+  ///
+  /// ### [Demo Data Scenario Example 1 - 60Hz screen scrolling]
+  /// 1. **RingBuffer Timelines**:
+  ///    Suppose we have 6 frames recorded in `_frames` with physical vsync markers:
+  ///    * Frame 0: `vsyncStartUs` = `100,000`
+  ///    * Frame 1: `vsyncStartUs` = `116,670`
+  ///    * Frame 2: `vsyncStartUs` = `133,340`
+  ///    * Frame 3: `vsyncStartUs` = `150,010`
+  ///    * Frame 4: `vsyncStartUs` = `166,680`
+  ///    * Frame 5: `vsyncStartUs` = `183,350` (Latest frame in the batch)
+  /// 2. **Sliding Window Filtering**:
+  ///    * `lastVsync` = `183,350` us.
+  ///    * Oldest frame within 1,000,000 us (1 second) window: Frame 0 (`100,000` us) since `183,350` - `100,000` = `83,350` us (<= 1,000,000 us).
+  ///    * `frameCount` = 6 (Frame 0 to 5).
+  /// 3. **Calculation Formula**:
+  ///    * `spanUs` = `lastVsync` - `oldestVsync` = `183,350` - `100,000` = `83,350` us (0.08335 seconds).
+  ///    * FPS = (frameCount - 1) / (spanUs / 1,000,000) = 5 / 0.08335 = **59.98 FPS**.
+  /// 4. **Visual Smoothing (EMA)**:
+  ///    * If previous smoothed FPS was `58.0`:
+  ///      * `smoothedFps` = (`59.98` * 0.3) + (`58.0` * 0.7) = **58.59 FPS**.
+  ///
+  /// ### [Demo Data Scenario Example 2 - 120Hz screen scrolling]
+  /// 1. **RingBuffer Timelines**:
+  ///    Suppose we have 6 frames recorded in `_frames` on a 120Hz high-refresh display:
+  ///    * Frame 0: `vsyncStartUs` = `100,000`
+  ///    * Frame 1: `vsyncStartUs` = `108,333` (Interval ~8.33ms)
+  ///    * Frame 2: `vsyncStartUs` = `116,666` (Interval ~8.33ms)
+  ///    * Frame 3: `vsyncStartUs` = `124,999` (Interval ~8.33ms)
+  ///    * Frame 4: `vsyncStartUs` = `133,332` (Interval ~8.33ms)
+  ///    * Frame 5: `vsyncStartUs` = `141,665` (Latest frame in the batch)
+  /// 2. **Sliding Window Filtering**:
+  ///    * `lastVsync` = `141,665` us.
+  ///    * Oldest frame within 1,000,000 us window: Frame 0 (`100,000` us) since `141,665` - `100,000` = `41,665` us (<= 1,000,000 us).
+  ///    * `frameCount` = 6 (Frame 0 to 5).
+  /// 3. **Calculation Formula**:
+  ///    * `spanUs` = `lastVsync` - `oldestVsync` = `141,665` - `100,000` = `41,665` us (0.041665 seconds).
+  ///    * FPS = (frameCount - 1) / (spanUs / 1,000,000) = 5 / 0.041665 = **120.0 FPS**.
+  /// 4. **Visual Smoothing (EMA)**:
+  ///    * If previous smoothed FPS was `118.0` (as the app ramps up to 120Hz scrolling speed):
+  ///      * `smoothedFps` = (`120.0` * 0.3) + (`118.0` * 0.7) = **118.6 FPS**.
   double _calculateFps() {
     if (_frames.isEmpty) return 60.0;
     
