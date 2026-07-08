@@ -1,3 +1,11 @@
+## 0.0.18
+
+- **FPS Physical Timeline Refactor**:
+    - Replaced `DateTime.now()` wall-clock timestamps with physical GPU `vsyncStartUs` tick offsets inside `FrameMetric`.
+    - Resolved the critical divide-by-tiny-delta FPS calculation bug during Flutter's batch timing callbacks, ensuring FPS metrics remain mathematically robust and under physical limits.
+- **RingBuffer Enhancement**:
+    - Added `isNotEmpty` read-only getter to `RingBuffer` utility for cleaner UI state checks.
+
 ## 0.0.17
 
 - **Frame Performance Monitoring**:
