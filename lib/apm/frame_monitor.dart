@@ -1,20 +1,21 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:io' show ProcessInfo, Platform;
 import 'dart:ui' show FramePhase, FrameTiming;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'ring_buffer.dart';
+import '../route/app_nav.dart';
 
 /// Single-frame APM metrics captured from the Flutter engine pipeline.
 class FrameMetric {
-  final int vsyncStartUs;       // Physical vsync start timestamp in microseconds
-  final int buildDurationUs;    // UI thread build duration
-  final int rasterDurationUs;   // GPU rasterization duration
-  final int totalDurationUs;    // Total elapsed time (build + vsyncOverhead + raster)
-  final int vsyncBudgetUs;      // Adaptive vsync budget based on dynamic refresh rate
-  final bool isJank;            // Whether this frame exceeded the vsync budget
-  final bool isSevereJank;      // Whether this frame missed multiple vsync beats (> 2 * budget)
+  final int vsyncStartUs; // Physical vsync start timestamp in microseconds
+  final int buildDurationUs; // UI thread build duration
+  final int rasterDurationUs; // GPU rasterization duration
+  final int totalDurationUs; // Total elapsed time (build + vsyncOverhead + raster)
+  final int vsyncBudgetUs; // Adaptive vsync budget based on dynamic refresh rate
+  final bool isJank; // Whether this frame exceeded the vsync budget
+  final bool isSevereJank; // Whether this frame missed multiple vsync beats (> 2 * budget)
+  final String? routeName; // The route/page active during this frame
 
   FrameMetric({
     required this.vsyncStartUs,
@@ -24,17 +25,18 @@ class FrameMetric {
     required this.vsyncBudgetUs,
     required this.isJank,
     required this.isSevereJank,
+    this.routeName,
   });
 }
 
 /// An immutable snapshot of the performance metrics, dispatching to the UI
 /// layer via [ValueNotifier] with optimized throttling.
 class FrameMonitorSnapshot {
-  final double fps;                     // Smoothed EMA FPS value
-  final int jankCount;                  // Total accumulated Janks
-  final int severeJankCount;            // Total accumulated severe Janks
-  final int worstFrameUs;               // Worst rendering latency recorded
-  final int memoryMB;                   // Throttled memory footprint (Dart RSS)
+  final double fps; // Smoothed EMA FPS value
+  final int jankCount; // Total accumulated Janks
+  final int severeJankCount; // Total accumulated severe Janks
+  final int worstFrameUs; // Worst rendering latency recorded
+  final int memoryMB; // Throttled memory footprint (Dart RSS)
   final RingBuffer<FrameMetric> recentFrames; // Shared read-only ring buffer
 
   FrameMonitorSnapshot({
@@ -57,10 +59,10 @@ class FrameMonitor {
   FrameMonitor._();
 
   // Configuration Constants
-  static const int ringCapacity = 300;             // Tracks roughly 5 seconds @ 60fps
-  static const int defaultBudgetUs = 16670;       // Standard 60Hz frame budget (16.67ms)
-  static const int ignoreInitialFramesCount = 5;  // Ignore startup warm-up frames
-  static const double emaAlpha = 0.3;             // EMA coefficient for visual smoothing
+  static const int ringCapacity = 300; // Tracks roughly 5 seconds @ 60fps
+  static const int defaultBudgetUs = 16670; // Standard 60Hz frame budget (16.67ms)
+  static const int ignoreInitialFramesCount = 5; // Ignore startup warm-up frames
+  static const double emaAlpha = 0.3; // EMA coefficient for visual smoothing
 
   // Thread-safe Buffers and Stats
   final RingBuffer<FrameMetric> _frames = RingBuffer(ringCapacity);
@@ -78,7 +80,7 @@ class FrameMonitor {
   // Throttled Notification Drivers
   final ValueNotifier<FrameMonitorSnapshot?> snapshot = ValueNotifier(null);
   DateTime _lastNotifyTime = DateTime.now();
-  
+
   // Tracking dynamic Vsync interval
   Duration? _lastVsyncStart;
 
@@ -188,7 +190,8 @@ class FrameMonitor {
           // Calculate dynamically if interval makes physical sense (3ms to 100ms)
           // 8.3ms -> 120Hz, 11.1ms -> 90Hz, 16.6ms -> 60Hz
           budgetUs = intervalUs;
-        } else if (intervalUs >= 100000 && totalUs <= (kDebugMode && !isRunningInTest ? budgetUs * 3 : budgetUs)) {
+        } else if (intervalUs >= 100000 &&
+            totalUs <= (kDebugMode && !isRunningInTest ? budgetUs * 3 : budgetUs)) {
           // If interval is larger than 100ms and the frame rendered within budget,
           // it's an isolated normal frame triggered by idle state refresh (e.g. APM UI rebuild).
           // We bypass it to prevent ring buffer metric pollution while keeping real janks.
@@ -220,6 +223,7 @@ class FrameMonitor {
         vsyncBudgetUs: budgetUs,
         isJank: isJank,
         isSevereJank: isSevereJank,
+        routeName: AppNav.currentRouteName,
       );
 
       _frames.add(metric);
@@ -238,7 +242,7 @@ class FrameMonitor {
 
     final double calculatedFps = _calculateFps();
     final double previousFps = snapshot.value?.fps ?? calculatedFps;
-    
+
     // Apply Exponential Moving Average (EMA) filter for UI value smoothing
     final double smoothedFps = (calculatedFps * emaAlpha) + (previousFps * (1.0 - emaAlpha));
 
@@ -301,10 +305,10 @@ class FrameMonitor {
   ///      * `smoothedFps` = (`120.0` * 0.3) + (`118.0` * 0.7) = **118.6 FPS**.
   double _calculateFps() {
     if (_frames.isEmpty) return 60.0;
-    
+
     final int len = _frames.length;
     final int lastVsync = _frames[len - 1].vsyncStartUs;
-    
+
     // 1. Scan back to find the oldest frame that falls within the 1-second (1,000,000 us) window
     int oldestIndex = -1;
     for (int i = 0; i < len; i++) {

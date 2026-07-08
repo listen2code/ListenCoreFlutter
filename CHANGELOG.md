@@ -1,3 +1,9 @@
+## 0.0.20
+
+- **Page-Associated Jank Diagnostics**:
+    - Added `routeName` field to `FrameMetric` class to track the currently active page.
+    - Integrated with global `AppNav.currentRouteName` during frame telemetry collection inside `FrameMonitor._onTimings`.
+
 ## 0.0.19
 
 - **True Latency Calculation Refactor**:
