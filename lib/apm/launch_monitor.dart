@@ -145,7 +145,7 @@ class LaunchMonitor {
     }
 
     final List<String> encodedHistory = updatedHistory.map((r) => jsonEncode(r.toJson())).toList();
-    SpUtil.putStringList(_keyLaunchHistory, encodedHistory);
+    SpUtil.put(_keyLaunchHistory, encodedHistory);
 
     latestReport.value = newReport;
     appLogger.i('LaunchMonitor: Compiled report - Total: ${newReport.totalMs}ms (Boot: ${newReport.coldBootMs}ms, Init: ${newReport.initMs}ms, Render: ${newReport.renderMs}ms). Regression: $isRegression');
