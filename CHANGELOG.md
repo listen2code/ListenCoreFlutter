@@ -1,4 +1,7 @@
 
+## 0.0.25
+- **Fix**:
+- 
 ## 0.0.24
 - **New Feature**:
     - Created `LaunchMonitor` in `lib/apm/launch_monitor.dart` to track specific lifecycle stages: main entry, initialization start/end, and first frame rendering.

@@ -1,6 +1,6 @@
 name: listen_core
 description: "Core of Flutter Architecture"
-version: 0.0.24
+version: 0.0.25
 repository: https://github.com/listen2code/ListenCoreFlutter
 
 environment:
