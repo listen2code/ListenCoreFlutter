@@ -1,3 +1,13 @@
+## 0.0.21
+
+- **Refactoring & Single Responsibility Principles**:
+    - Split the bloated `base_view_model.dart` file into four dedicated, cohesive files under `lib/base/`:
+        - `page_lifecycle.dart` (containing `PageLifecycle` lifecycle callbacks).
+        - `base_state.dart` (containing `BaseState` and `BaseIntent` definitions).
+        - `active_view_models.dart` (containing `ActiveViewModels` registration cache and `MviPlaybackObserver`).
+        - `base_view_model.dart` (containing core `IStateOwner`, `BaseViewModel` and `ViewModelMixin` orchestrator).
+    - Utilized Dart export directives to ensure 100% backward compatibility for all downstream clients.
+
 ## 0.0.20
 
 - **Page-Associated Jank Diagnostics**:
