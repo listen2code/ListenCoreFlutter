@@ -5,9 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '../core.dart';
-import 'page_lifecycle.dart';
-import 'base_state.dart';
-import 'active_view_models.dart';
 
 export 'page_lifecycle.dart';
 export 'base_state.dart';
@@ -278,7 +275,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// ```
   @protected
   void subscribeEvent<T extends BaseEvent>(
-     void Function(T event) onData, {
+    void Function(T event) onData, {
     String? key,
     bool sticky = false,
     bool Function(T event)? where,

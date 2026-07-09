@@ -1,3 +1,15 @@
+
+## 0.0.22
+
+- **Network Monitoring**:
+    - Created `NetworkRequestEntry` in `lib/apm/network_inspector_store.dart` to model HTTP transaction data, including headers, payloads, timing, and error messages.
+    - Implemented `NetworkInspectorStore` to manage a bounded in-memory buffer (FIFO, max 100 entries) of network transactions, utilizing `ValueNotifier` for reactive UI updates.
+    - Added `_NetworkInspectorInterceptor` to `lib/network/api_client.dart` to automatically log network activity through the Dio client.
+- **Core Integration**:
+    - Exported `network_inspector_store.dart` in `lib/core.dart` to make the inspector store accessible throughout the application.
+- **Code Maintenance**:
+    - Performed minor cleanup of imports and formatting in `lib/base/base_view_model.dart`.
+
 ## 0.0.21
 
 - **Refactoring & Single Responsibility Principles**:

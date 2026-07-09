@@ -41,4 +41,5 @@ export 'utils/zone_manager.dart';
 export 'apm/ring_buffer.dart';
 export 'apm/frame_monitor.dart';
 export 'apm/perf_trace_store.dart';
+export 'apm/network_inspector_store.dart';
 export 'services/notification_service.dart';
