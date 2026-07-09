@@ -1,4 +1,16 @@
 
+## 0.0.24
+- **New Feature**:
+    - Created `LaunchMonitor` in `lib/apm/launch_monitor.dart` to track specific lifecycle stages: main entry, initialization start/end, and first frame rendering.
+    - Implemented `LaunchReport` data model to store timing metrics (cold boot, init, and render durations) with JSON serialization support.
+- **Performance Analysis**:
+    - Added regression detection logic that compares the current launch duration against the average of previous runs.
+    - Integrated a `ValueNotifier` to expose the latest performance report to the UI.
+- **Persistence**:
+    - Added logic to store and retrieve a history of up to 50 launch records using `SpUtil`.
+- **Public API**:
+    - Exported `launch_monitor.dart` in `lib/core.dart` for centralized access.
+
 ## 0.0.23
 
 - **Diagnostics**:
