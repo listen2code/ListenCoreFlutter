@@ -1,4 +1,11 @@
 
+## 0.0.23
+
+- **Diagnostics**:
+    - Updated `CrashManager` in `lib/utils/crash_manager.dart` to include the `Trace ID` from `ZoneManager` and the current navigation `Route` in generated crash reports.
+- **Documentation**:
+    - Added a new entry for version `0.0.23` in `CHANGELOG.md`.
+
 ## 0.0.22
 
 - **Network Monitoring**:

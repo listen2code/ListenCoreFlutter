@@ -53,6 +53,8 @@ class CrashManager {
       final StringBuffer buffer = StringBuffer();
       buffer.writeln('=== CRASH REPORT ===');
       buffer.writeln('Time: ${DateTime.now()}');
+      buffer.writeln('Trace ID: ${ZoneManager.currentTraceId}');
+      buffer.writeln('Route: ${AppNav.currentRouteName ?? 'unknown'}');
 
       if (error is FlutterErrorDetails) {
         buffer.writeln('Summary: ${error.exceptionAsString()}');
