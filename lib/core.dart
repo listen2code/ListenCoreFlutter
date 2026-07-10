@@ -25,6 +25,7 @@ export 'network/base_use_case.dart';
 export 'network/local_mock_server.dart';
 export 'network/network_info.dart';
 export 'route/app_nav.dart';
+export 'route/deep_link_manager.dart';
 export 'route/route_interceptor.dart';
 export 'utils/cache_manager.dart';
 export 'utils/crash_manager.dart';

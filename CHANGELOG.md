@@ -1,3 +1,12 @@
+## 0.0.27
+- **Architecture Enhancements**:
+    - Introduced `DeepLinkManager` in `lib/route/deep_link_manager.dart` to manage link subscriptions and URI processing using the `app_links` package.
+    - Integrated `DeepLinkManager` with `AppNav` to provide a default routing fallback for incoming URIs.
+    - Added an `onLinkReceived` hook to allow the host app to intercept or pre-process links before navigation.
+- **Core Library Update**:
+    - Exported `deep_link_manager.dart` in `lib/core.dart` for public access.
+- **Dependency Management**:
+    - Added `app_links: ^6.3.3` to `pubspec.yaml` and updated `pubspec.lock`.
 
 ## 0.0.26
 - **Deep Linking**:
