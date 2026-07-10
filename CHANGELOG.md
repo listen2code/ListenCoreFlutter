@@ -1,7 +1,18 @@
 
+## 0.0.26
+- **Deep Linking**:
+    - Configured an `intent-filter` in `AndroidManifest.xml` to handle the `listen://` scheme.
+    - Added a `schemes` list to `CoreInitializer` and `AppNavConfig` to facilitate stripping custom protocol prefixes during route resolution.
+- **Navigation Enhancements**:
+    - Introduced `ArgumentConverter` and a registration registry in `AppNav` to allow `getArgs<T>` to transform query parameter maps into type-safe objects.
+    - Updated `AppNav.getParam` to automatically handle string-to-boolean conversion for parameters parsed from URIs.
+    - Improved `_resolveRoute` logic to decode URI components and handle deep-link paths more robustly.
+- **Core API**:
+    - Added `registerArgumentConverter` to `AppNav` for defining custom decoding logic for route arguments.
+
 ## 0.0.25
 - **Fix**:
-- 
+ 
 ## 0.0.24
 - **New Feature**:
     - Created `LaunchMonitor` in `lib/apm/launch_monitor.dart` to track specific lifecycle stages: main entry, initialization start/end, and first frame rendering.

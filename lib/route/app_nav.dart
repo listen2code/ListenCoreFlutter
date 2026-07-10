@@ -7,6 +7,8 @@ import '../core.dart';
 /// Builder function to create a page for a specific route path.
 typedef RoutePageBuilder = Widget Function();
 
+typedef ArgumentConverter<T> = T Function(Map<String, dynamic> map);
+
 /// Global configuration for route interception and app-wide navigation settings.
 class AppNavConfig {
   AppNavConfig._();
@@ -25,18 +27,26 @@ class AppNavConfig {
 
   static final Map<String, RoutePageBuilder> _routeRegistry = {};
 
+  static final List<String> _schemes = [];
+  static List<String> get schemes => _schemes;
+
   static void register({
     required bool Function() isGuest,
     required Future<bool> Function(BuildContext context) onLogin,
     void Function()? onLoginSuccess,
     Future<bool> Function(BuildContext context)? onShowLoginDialog,
     Map<String, RoutePageBuilder>? routes,
+    List<String>? schemes,
   }) {
     isGuestCheck = isGuest;
     onLoginRedirect = onLogin;
     onLoginSuccessCallback = onLoginSuccess;
     onShowLoginDialogCallback = onShowLoginDialog;
     if (routes != null) _routeRegistry.addAll(routes);
+    if (schemes != null) {
+      _schemes.clear();
+      _schemes.addAll(schemes);
+    }
   }
 
   static RoutePageBuilder? getBuilder(String path) => _routeRegistry[path];
@@ -44,6 +54,12 @@ class AppNavConfig {
 
 class AppNav {
   AppNav._();
+
+  static final Map<Type, ArgumentConverter<dynamic>> _argumentConverters = {};
+
+  static void registerArgumentConverter<T>(ArgumentConverter<T> converter) {
+    _argumentConverters[T] = converter;
+  }
 
   /// Global snapshot of the currently active route's arguments.
   static Object? _currentArgs;
@@ -70,20 +86,39 @@ class AppNav {
   /// Safely usable within initState as it doesn't require BuildContext.
   static T? getParam<T>(String key) {
     if (_currentArgs is Map<String, dynamic>) {
-      return (_currentArgs as Map<String, dynamic>)[key] as T?;
+      final val = (_currentArgs as Map<String, dynamic>)[key];
+      if (val is T) return val;
+      // Handle string to bool conversion from query params
+      if (T == bool && val is String) {
+        return (val == 'true') as T;
+      }
+      return val as T?;
     }
     return null;
   }
 
   /// Retrieves the entire arguments object from the current global route state.
-  static T? getArgs<T>() => _currentArgs as T?;
+  /// Seamlessly fallback-decodes Map of query params from Deep Links to type-safe classes using registered converters.
+  static T? getArgs<T>() {
+    if (_currentArgs is T) {
+      return _currentArgs as T;
+    }
+    if (_currentArgs is Map<String, dynamic>) {
+      final map = _currentArgs as Map<String, dynamic>;
+      final converter = _argumentConverters[T];
+      if (converter != null) {
+        return converter(map) as T?;
+      }
+    }
+    return null;
+  }
 
   /// Hook for MaterialApp.onGenerateRoute to handle deep links and initial route
-  /// while ensuring ZoneManager coverage for every page.
+  /// while ensuring ZoneManager coverage and deep-link query parameter parsing.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     final name = settings.name;
     if (name == null) return null;
-    return _buildPageRoute(name, settings.arguments);
+    return _resolveRoute<dynamic>(name, settings.arguments);
   }
 
   static Future<T?>? to<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
@@ -170,6 +205,21 @@ class AppNav {
 
   static void back<T extends Object?>([T? result]) => AppNavConfig.navigatorKey.currentState?.pop(result);
 
+  static String _stripScheme(String target) {
+    var path = target;
+    for (final scheme in AppNavConfig.schemes) {
+      final prefix = '$scheme://';
+      if (path.startsWith(prefix)) {
+        path = path.substring(prefix.length);
+        if (!path.startsWith('/')) {
+          path = '/$path';
+        }
+        break;
+      }
+    }
+    return path;
+  }
+
   /// Internal helper to resolve target and extract URI parameters into RouteSettings.
   static Route<T>? _resolveRoute<T>(dynamic target, Object? arguments) {
     if (target is Widget) {
@@ -178,22 +228,23 @@ class AppNav {
         settings: RouteSettings(name: target.runtimeType.toString(), arguments: arguments),
       );
     } else if (target is String) {
+      final cleanTarget = _stripScheme(target);
       String path;
       final Map<String, dynamic> combinedArgs = {};
 
-      if (target.contains('?')) {
-        final index = target.indexOf('?');
-        path = target.substring(0, index);
-        final queryStr = target.substring(index + 1);
+      if (cleanTarget.contains('?')) {
+        final index = cleanTarget.indexOf('?');
+        path = cleanTarget.substring(0, index);
+        final queryStr = cleanTarget.substring(index + 1);
         final queryParts = queryStr.split('&');
         for (var part in queryParts) {
           final kv = part.split('=');
           if (kv.length == 2) {
-            combinedArgs[kv[0]] = kv[1];
+            combinedArgs[kv[0]] = Uri.decodeComponent(kv[1]);
           }
         }
       } else {
-        path = target;
+        path = cleanTarget;
       }
 
       if (arguments is Map) {
@@ -202,7 +253,7 @@ class AppNav {
         return _buildPageRoute(path, arguments);
       }
 
-      return _buildPageRoute<T>(path, combinedArgs);
+      return _buildPageRoute<T>(path, combinedArgs.isEmpty && arguments != null ? arguments : combinedArgs);
     }
     return null;
   }

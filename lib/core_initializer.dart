@@ -37,6 +37,7 @@ class CoreConfig {
   final Future<bool> Function(BuildContext context)? onLoginRedirect;
   final void Function()? onLoginSuccessCallback;
   final Future<bool> Function(BuildContext context)? onShowLoginDialogCallback;
+  final List<String>? schemes;
 
   // Mock Server
   final MockServerConfig? mockServerConfig;
@@ -63,6 +64,7 @@ class CoreConfig {
     this.onLoginRedirect,
     this.onLoginSuccessCallback,
     this.onShowLoginDialogCallback,
+    this.schemes,
     this.mockServerConfig,
     this.logConfig,
     this.storageConfig,
@@ -140,7 +142,6 @@ class Core {
       Translations.register(data: config.i18nData!, languageCodeProvider: config.languageCodeProvider!);
     }
 
-    // 10. Setup Navigation Config
     if (config.isGuestCheck != null && config.onLoginRedirect != null) {
       AppNavConfig.register(
         routes: config.routes,
@@ -148,6 +149,7 @@ class Core {
         onLogin: config.onLoginRedirect!,
         onLoginSuccess: config.onLoginSuccessCallback,
         onShowLoginDialog: config.onShowLoginDialogCallback,
+        schemes: config.schemes,
       );
     }
 
