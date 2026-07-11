@@ -143,6 +143,16 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         _isRouteVisible = false;
         _evaluateVisibility();
       },
+      onPop: () {
+        // Synchronously cancel the subscription when popped or replaced.
+        // During pop or pushReplacement, the exiting page widget is not immediately disposed
+        // until the transition animation completes (takes ~300ms). Since Riverpod's auto-dispose
+        // ref count doesn't drop to 0 instantly during transition, the VM is reused, and the old page
+        // remains an active listener of the effectStream. Canceling here immediately ensures the exiting
+        // page does not receive and process duplicate VM side-effects (e.g. showing dialogs twice).
+        _effectSubscription?.cancel();
+        _effectSubscription = null;
+      },
     );
 
     _lifecycleObserver = _AppLifecycleProxy(
@@ -352,8 +362,14 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 class _RouteAwareProxy extends RouteAware {
   final VoidCallback onVisible;
   final VoidCallback onInVisible;
+  /// Callback invoked synchronously when the route is popped or replaced.
+  final VoidCallback? onPop;
 
-  _RouteAwareProxy({required this.onVisible, required this.onInVisible});
+  _RouteAwareProxy({
+    required this.onVisible,
+    required this.onInVisible,
+    this.onPop,
+  });
 
   @override
   /// Called when the current route has been pushed.
@@ -368,8 +384,11 @@ class _RouteAwareProxy extends RouteAware {
   void didPushNext() => onInVisible();
 
   @override
-  /// Called when the current route has been popped off.
-  void didPop() => onInVisible();
+  /// Called when the current route has been popped off (permanently exiting).
+  void didPop() {
+    onInVisible();
+    onPop?.call();
+  }
 }
 
 /// Dedicated class to handle WidgetsBindingObserver callbacks.

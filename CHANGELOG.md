@@ -1,3 +1,19 @@
+## 0.0.28
+- **Deep Link Handling**:
+    - Refactored `DeepLinkManager` from static methods to a singleton pattern.
+    - Decoupled navigation logic by firing a `CommonEvent` via `EventBus` instead of calling `AppNav` directly.
+    - Adjusted `init` sequence to subscribe to the link stream before processing the initial cold-start URI.
+- **Navigation Enhancements**:
+    - Updated `AppNav.to` to use `pushReplacement` instead of `push` if the target route is already the current route.
+    - Relaxed type constraints in `getParam` and `getArgs` from `Map<String, dynamic>` to a general `Map` to improve compatibility with various data sources.
+    - Added a public getter for `currentArgs`.
+- **Lifecycle & Safety**:
+    - **BaseViewModel**: Added `mounted` checks in `updateState` and `onComplete` logging to prevent operations on disposed view models.
+    - **BaseLifecyclePage**: Introduced an `onPop` callback to `_RouteAwareProxy` to automatically cancel effect subscriptions when a page is popped.
+- **Project Metadata**:
+    - Bumped package version to `0.0.28` in `pubspec.yaml`.
+    - Updated `CHANGELOG.md` to reflect deep link execution changes and dependency updates.
+  
 ## 0.0.27
 - **Architecture Enhancements**:
     - Introduced `DeepLinkManager` in `lib/route/deep_link_manager.dart` to manage link subscriptions and URI processing using the `app_links` package.

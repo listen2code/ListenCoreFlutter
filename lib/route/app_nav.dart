@@ -66,6 +66,7 @@ class AppNav {
 
   static String? _currentRouteName;
   static String? get currentRouteName => _currentRouteName;
+  static Object? get currentArgs => _currentArgs;
 
   @visibleForTesting
   static set currentRouteName(String? routeName) => _currentRouteName = routeName;
@@ -85,8 +86,8 @@ class AppNav {
   /// Retrieves a parameter from the current global route state.
   /// Safely usable within initState as it doesn't require BuildContext.
   static T? getParam<T>(String key) {
-    if (_currentArgs is Map<String, dynamic>) {
-      final val = (_currentArgs as Map<String, dynamic>)[key];
+    if (_currentArgs is Map) {
+      final val = (_currentArgs as Map)[key];
       if (val is T) return val;
       // Handle string to bool conversion from query params
       if (T == bool && val is String) {
@@ -103,8 +104,8 @@ class AppNav {
     if (_currentArgs is T) {
       return _currentArgs as T;
     }
-    if (_currentArgs is Map<String, dynamic>) {
-      final map = _currentArgs as Map<String, dynamic>;
+    if (_currentArgs is Map) {
+      final map = Map<String, dynamic>.from(_currentArgs as Map);
       final converter = _argumentConverters[T];
       if (converter != null) {
         return converter(map) as T?;
@@ -121,7 +122,12 @@ class AppNav {
     return _resolveRoute<dynamic>(name, settings.arguments);
   }
 
-  static Future<T?>? to<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
+  static Future<T?>? to<T extends Object?>(
+    dynamic target, {
+    bool needLogin = false,
+    Object? arguments,
+    bool replaceIfExists = false,
+  }) {
     final completer = Completer<T?>();
 
     tryLogin(
@@ -132,9 +138,37 @@ class AppNav {
           completer.complete(null);
           return;
         }
-        AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
-          completer.complete(value);
-        });
+
+        String? targetRouteName;
+        if (target is Widget) {
+          targetRouteName = target.runtimeType.toString();
+        } else if (target is String) {
+          final cleanTarget = _stripScheme(target);
+          if (cleanTarget.contains('?')) {
+            targetRouteName = cleanTarget.substring(0, cleanTarget.indexOf('?'));
+          } else {
+            targetRouteName = cleanTarget;
+          }
+        }
+
+        // Check if the target route is already the currently active route.
+        // If so, we can either perform a pushReplacement or directly return based on the replaceIfExists flag.
+        final isAlreadyOnTarget = targetRouteName != null && _currentRouteName == targetRouteName;
+
+        if (isAlreadyOnTarget) {
+          if (replaceIfExists) {
+            AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
+              completer.complete(value);
+            });
+          } else {
+            appLogger.i('AppNav: Target route $targetRouteName is already current. Ignoring navigation.');
+            completer.complete(null);
+          }
+        } else {
+          AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
+            completer.complete(value);
+          });
+        }
       },
       onFail: () => completer.complete(null),
     );

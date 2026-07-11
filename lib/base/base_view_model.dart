@@ -225,6 +225,9 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// memory leaks.
   final List<StreamSubscription> _eventSubscriptions = [];
 
+  /// Active effect subscription. Replaced synchronously when a new page binds.
+  StreamSubscription<BaseEffect>? _activeEffectSubscription;
+
   /// Flag to track if the Riverpod ref.onDispose hook has been registered.
   bool _riverpodDisposeRegistered = false;
 
@@ -286,7 +289,12 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
 
   @override
   StreamSubscription<BaseEffect> onBindEffect(void Function(BaseEffect effect) handler) {
-    return effectStream.listen(handler);
+    // Automatically cancel any previous page's subscription to prevent duplicate side-effects
+    // when a page route is replaced or transitioned (and the view model is reused).
+    _activeEffectSubscription?.cancel();
+    final sub = effectStream.listen(handler);
+    _activeEffectSubscription = sub;
+    return sub;
   }
 
   /// Centralized state update method.
@@ -304,6 +312,23 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   /// ```
   @protected
   void updateState(S newState) {
+    // Check if the underlying Riverpod provider is still mounted.
+    // If the provider has already been disposed (e.g. during page pop/replace transitions),
+    // we must avoid triggering state updates on it to prevent Riverpod's "Cannot use the Ref after it has been disposed" crash.
+    bool isMounted = true;
+    try {
+      final dynamicSelf = this as dynamic;
+      final providerRef = dynamicSelf.ref;
+      if (providerRef != null) {
+        isMounted = providerRef.mounted == true;
+      }
+    } catch (_) {}
+
+    if (!isMounted) {
+      appLogger.d('$tag: [STATE] Tried to updateState after disposal');
+      return;
+    }
+
     if (newState == state) return;
     final oldState = state;
     state = newState;
@@ -725,6 +750,9 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     }
     _eventSubscriptions.clear();
 
+    _activeEffectSubscription?.cancel();
+    _activeEffectSubscription = null;
+
     _effectController.close();
   }
 
@@ -792,7 +820,22 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     /// Logs the final state and marks the completion time for performance tracking.
     /// Also checks for injected crashes for testing purposes.
     void onComplete() {
-      appLogger.d('$tag: [STATE] <- $state');
+      // Safe check if the provider is still mounted to prevent accessing the Ref on disposed providers
+      // when printing the completion logs.
+      bool isMounted = true;
+      try {
+        final dynamicSelf = this as dynamic;
+        final providerRef = dynamicSelf.ref;
+        if (providerRef != null) {
+          isMounted = providerRef.mounted == true;
+        }
+      } catch (_) {}
+
+      if (isMounted) {
+        appLogger.d('$tag: [STATE] <- $state');
+      } else {
+        appLogger.d('$tag: [STATE] <- (Disposed)');
+      }
       CrashManager.checkAndTriggerInjectedCrash();
       ZoneManager.mark('Intent Finished');
     }
