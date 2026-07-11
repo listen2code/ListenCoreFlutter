@@ -347,17 +347,16 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         return PopScope(
           canPop: (widget.canPop ?? true) && !_isInternalLoading.value,
           onPopInvokedWithResult: (didPop, resultVal) {
-            final shouldInterceptCustomBack = !didPop && !_isInternalLoading.value && widget.onInterceptBack != null;
-            if (shouldInterceptCustomBack) {
-              // Custom back gesture intercepted. Trigger custom callback.
-              widget.onInterceptBack!();
-            } else {
-              // Cancel pending requests to release network resources.
+            if (didPop) {
+              // Page successfully popped. Cancel pending requests immediately to release network resources.
               _viewModel?.cancelRequests("onBackInvoked");
-              if (!didPop) {
-                // If the page was blocked from popping (e.g. it was internally loading, or fell back without custom handler), dismiss loader.
-                _viewModel?.emitEffect(LoadingEffect(false));
-              }
+            } else if (_isInternalLoading.value) {
+              // If page is currently loading internally, intercept back gesture to cancel requests and dismiss loading spinner first.
+              _viewModel?.cancelRequests("onBackInvoked");
+              _viewModel?.emitEffect(LoadingEffect(false));
+            } else if (widget.onInterceptBack != null) {
+              // Back gesture blocked/intercepted. Trigger custom intercept callback if provided.
+              widget.onInterceptBack!();
             }
           },
           child: result,
@@ -371,14 +370,11 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
 class _RouteAwareProxy extends RouteAware {
   final VoidCallback onVisible;
   final VoidCallback onInVisible;
+
   /// Callback invoked synchronously when the route is popped or replaced.
   final VoidCallback? onPop;
 
-  _RouteAwareProxy({
-    required this.onVisible,
-    required this.onInVisible,
-    this.onPop,
-  });
+  _RouteAwareProxy({required this.onVisible, required this.onInVisible, this.onPop});
 
   @override
   /// Called when the current route has been pushed.
