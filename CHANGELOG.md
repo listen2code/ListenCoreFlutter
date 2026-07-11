@@ -1,3 +1,12 @@
+## 0.0.29
+- **Lifecycle & Safety**:
+    - **BaseLifeCyclePage**: Configured back key gesture to prioritize canceling network requests and dismissing loading spinner when `_isInternalLoading` is active.
+    - **BaseViewModel**: Introduced `_activeEffectSubscription` tracking in `onBindEffect` to cancel older page subscriptions, resolving duplicate event dialogs during route replacement.
+- **Navigation & AppNav**:
+    - Refactored `AppNav.to` to add `replaceIfExists` parameters and ignore redundant navigation triggers when targeting active routes.
+- **Dependencies & Metadata**:
+    - Bumped package version to `0.0.29` in `pubspec.yaml`.
+
 ## 0.0.28
 - **Deep Link Handling**:
     - Refactored `DeepLinkManager` from static methods to a singleton pattern.

@@ -21,10 +21,6 @@ class BaseScaffoldPage extends StatelessWidget {
   final Color bottomBarColor;
   final bool useGradientBackground;
 
-  /// Controls the PopScope and gesture behavior
-  final bool canPop;
-  final VoidCallback? onBackInvoked;
-
   const BaseScaffoldPage({
     super.key,
     required this.child,
@@ -43,8 +39,6 @@ class BaseScaffoldPage extends StatelessWidget {
     this.statusBarColor = Colors.transparent,
     this.bottomBarColor = Colors.transparent,
     this.useGradientBackground = true,
-    this.canPop = true,
-    this.onBackInvoked,
   });
 
   @override
@@ -106,19 +100,12 @@ class BaseScaffoldPage extends StatelessWidget {
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
-    return PopScope(
-      canPop: canPop,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        onBackInvoked?.call();
-      },
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: systemUiOverlayStyle,
-        child: GestureDetector(
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          behavior: HitTestBehavior.translucent,
-          child: scaffoldWidget,
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyle,
+      child: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: scaffoldWidget,
       ),
     );
   }

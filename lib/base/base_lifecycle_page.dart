@@ -322,36 +322,45 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
           );
         }
 
-        if (!widget.useScaffold) return content;
+        Widget result = content;
+        if (widget.useScaffold) {
+          result = BaseScaffoldPage(
+            title: widget.title,
+            actions: widget.actions,
+            appBar: widget.appBar,
+            drawer: widget.drawer,
+            floatingActionButton: widget.floatingActionButton,
+            useSafeArea: widget.useSafeArea,
+            padding: widget.padding,
+            resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+            extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
+            useStatusBar: widget.useStatusBar,
+            useBottomBar: widget.useBottomBar,
+            isEmptyTitle: widget.isEmptyTitle,
+            statusBarColor: widget.statusBarColor,
+            bottomBarColor: widget.bottomBarColor,
+            useGradientBackground: widget.useGradientBackground,
+            child: content,
+          );
+        }
 
-        return BaseScaffoldPage(
-          title: widget.title,
-          actions: widget.actions,
-          appBar: widget.appBar,
-          drawer: widget.drawer,
-          floatingActionButton: widget.floatingActionButton,
-          useSafeArea: widget.useSafeArea,
-          padding: widget.padding,
-          resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-          extendBodyBehindAppBar: widget.extendBodyBehindAppBar,
-          useStatusBar: widget.useStatusBar,
-          useBottomBar: widget.useBottomBar,
-          isEmptyTitle: widget.isEmptyTitle,
-          statusBarColor: widget.statusBarColor,
-          bottomBarColor: widget.bottomBarColor,
-          useGradientBackground: widget.useGradientBackground,
+        return PopScope(
           canPop: (widget.canPop ?? true) && !_isInternalLoading.value,
-          onBackInvoked: () {
-            // Priority given to custom interception logic
-            if (widget.onInterceptBack != null) {
+          onPopInvokedWithResult: (didPop, resultVal) {
+            final shouldInterceptCustomBack = !didPop && !_isInternalLoading.value && widget.onInterceptBack != null;
+            if (shouldInterceptCustomBack) {
+              // Custom back gesture intercepted. Trigger custom callback.
               widget.onInterceptBack!();
             } else {
+              // Cancel pending requests to release network resources.
               _viewModel?.cancelRequests("onBackInvoked");
-              // Loading is managed via effects to keep local _isInternalLoading in sync.
-              _viewModel?.emitEffect(LoadingEffect(false));
+              if (!didPop) {
+                // If the page was blocked from popping (e.g. it was internally loading, or fell back without custom handler), dismiss loader.
+                _viewModel?.emitEffect(LoadingEffect(false));
+              }
             }
           },
-          child: content,
+          child: result,
         );
       },
     );
