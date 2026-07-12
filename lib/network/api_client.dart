@@ -563,18 +563,18 @@ class _ErrorInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
         var message = err.response?.data?[BaseResponseModel.messageKey]?.toString();
-        if (message == null || message.trim().isEmpty) {
+        if (message.isNullOrBlank) {
           message = err.message;
         }
-        if (message == null || message.trim().isEmpty) {
+        if (message.isNullOrBlank) {
           message = 'HTTP bad response';
         }
         if (statusCode == HttpCode.unauthorized || statusCode == HttpCode.forbidden) {
-          exception = AuthException(message, statusCode);
+          exception = AuthException(message!, statusCode);
         } else if (statusCode != null && statusCode >= HttpCode.internalServerError) {
           exception = ServerException('Internal Server Error: $message', statusCode);
         } else {
-          exception = ServerException(message, statusCode);
+          exception = ServerException(message!, statusCode);
         }
         break;
       case DioExceptionType.badCertificate:
@@ -589,14 +589,14 @@ class _ErrorInterceptor extends Interceptor {
       case DioExceptionType.transformTimeout:
       case DioExceptionType.unknown:
         var cleanMsg = err.error?.toString();
-        if (cleanMsg == null || cleanMsg.trim().isEmpty) {
+        if (cleanMsg.isNullOrBlank) {
           cleanMsg = err.message;
         }
-        if (cleanMsg == null || cleanMsg.trim().isEmpty) {
+        if (cleanMsg.isNullOrBlank) {
           cleanMsg = 'Unknown network exception';
         }
         // Remove common redundant system exception prefixes for cleaner display
-        if (cleanMsg.startsWith('Exception: ')) {
+        if (cleanMsg!.startsWith('Exception: ')) {
           cleanMsg = cleanMsg.substring('Exception: '.length);
         }
         exception = ServerException(cleanMsg);

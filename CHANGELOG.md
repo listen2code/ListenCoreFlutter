@@ -1,6 +1,11 @@
+## 0.0.31
 ## 0.0.30
-
-
+- **Log & Obfuscation Protection**:
+    - Introduced `typeName` property across `AppException` and `Failure` hierarchies to protect class name prints from AOT compiler obfuscation in release builds.
+    - Simplified `safeCall` logs in `BaseRepository` and mapping logs in `_ErrorInterceptor` to avoid printing verbose raw DioException strings.
+- **Extensions & Utils**:
+    - Added `NullableStringExtension` helper (`isNullOrBlank`) to check nullable strings cleanly.
+    - 
 ## 0.0.29
 - **Lifecycle & Safety**:
     - **BaseLifeCyclePage**: Configured back key gesture to prioritize canceling network requests and dismissing loading spinner when `_isInternalLoading` is active.
