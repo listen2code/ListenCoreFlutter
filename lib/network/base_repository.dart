@@ -53,7 +53,11 @@ mixin BaseRepository {
 
       return await _handleFailureFallback(failure, getCached, useCacheCondition);
     } on DioException catch (e) {
-      appLogger.e('Repository DioException: $e');
+      final innerError = e.error;
+      final errorInfo = innerError is AppException
+          ? '${innerError.typeName}: ${innerError.message}'
+          : '${e.type}: ${e.message ?? e.error ?? "Unknown network error"}';
+      appLogger.e('Repository API Error [${e.requestOptions.path}]: $errorInfo');
       return await _handleFailureFallback(_mapDioException(e), getCached, useCacheCondition);
     } on TypeError catch (e, t) {
       appLogger.e('Repository Data Type Mismatch: $e \n$t');

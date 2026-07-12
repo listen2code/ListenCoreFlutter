@@ -562,13 +562,19 @@ class _ErrorInterceptor extends Interceptor {
         break;
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
-        final message = err.response?.data?[BaseResponseModel.messageKey] ?? err.message;
+        var message = err.response?.data?[BaseResponseModel.messageKey]?.toString();
+        if (message == null || message.trim().isEmpty) {
+          message = err.message;
+        }
+        if (message == null || message.trim().isEmpty) {
+          message = 'HTTP bad response';
+        }
         if (statusCode == HttpCode.unauthorized || statusCode == HttpCode.forbidden) {
-          exception = AuthException(message ?? "", statusCode);
+          exception = AuthException(message, statusCode);
         } else if (statusCode != null && statusCode >= HttpCode.internalServerError) {
           exception = ServerException('Internal Server Error: $message', statusCode);
         } else {
-          exception = ServerException(message ?? "", statusCode);
+          exception = ServerException(message, statusCode);
         }
         break;
       case DioExceptionType.badCertificate:
@@ -582,10 +588,22 @@ class _ErrorInterceptor extends Interceptor {
         break;
       case DioExceptionType.transformTimeout:
       case DioExceptionType.unknown:
-        exception = ServerException(err.toString());
+        var cleanMsg = err.error?.toString();
+        if (cleanMsg == null || cleanMsg.trim().isEmpty) {
+          cleanMsg = err.message;
+        }
+        if (cleanMsg == null || cleanMsg.trim().isEmpty) {
+          cleanMsg = 'Unknown network exception';
+        }
+        // Remove common redundant system exception prefixes for cleaner display
+        if (cleanMsg.startsWith('Exception: ')) {
+          cleanMsg = cleanMsg.substring('Exception: '.length);
+        }
+        exception = ServerException(cleanMsg);
+        break;
     }
 
-    appLogger.e('ErrorInterceptor: [${err.type}] mapped to ${exception.runtimeType}: ${exception.message}');
+    appLogger.e('ErrorInterceptor: DioException(${err.type}, statusCode: ${err.response?.statusCode}) -> ${exception.typeName}(${exception.message})');
 
     return handler.next(
       DioException(
@@ -593,6 +611,7 @@ class _ErrorInterceptor extends Interceptor {
         error: exception,
         type: err.type,
         response: err.response,
+        message: err.message,
       ),
     );
   }
