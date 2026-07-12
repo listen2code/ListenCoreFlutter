@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../core.dart';
-import 'api_delegate.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
