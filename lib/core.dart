@@ -19,6 +19,7 @@ export 'errors/failures.dart';
 export 'errors/error_mapper.dart';
 export 'i18n/translations.dart';
 export 'network/api_client.dart';
+export 'network/api_delegate.dart';
 export 'network/base_repository.dart';
 export 'network/base_response_model.dart';
 export 'network/base_use_case.dart';

@@ -1,11 +1,20 @@
+## 0.0.32
+- **Asset Generation Control**:
+    - Added `.flutter_assets_generator.yaml` configuration in package root to explicitly disable automatic `assets.dart` generation, preventing pollution of the `lib/generated` directory.
+
 ## 0.0.31
+- **Refactoring & Single Responsibility**:
+    - Extracted the bloated `api_client.dart` into single-responsibility interceptors inside the `network/interceptors/` directory (`logging_interceptor.dart`, `network_inspector_interceptor.dart`, `zone_context_interceptor.dart`, `auth_interceptor.dart`, `error_interceptor.dart`).
+    - Decoupled delegation protocols and status codes into `network/api_delegate.dart`.
+- **Clarity in Logging**:
+    - Standardized all interceptor outputs to print full, clean `Uri` strings instead of relative `path` strings, providing visibility into hostnames for third-party endpoints.
+
 ## 0.0.30
 - **Log & Obfuscation Protection**:
     - Introduced `typeName` property across `AppException` and `Failure` hierarchies to protect class name prints from AOT compiler obfuscation in release builds.
     - Simplified `safeCall` logs in `BaseRepository` and mapping logs in `_ErrorInterceptor` to avoid printing verbose raw DioException strings.
 - **Extensions & Utils**:
     - Added `NullableStringExtension` helper (`isNullOrBlank`) to check nullable strings cleanly.
-    - 
 ## 0.0.29
 - **Lifecycle & Safety**:
     - **BaseLifeCyclePage**: Configured back key gesture to prioritize canceling network requests and dismissing loading spinner when `_isInternalLoading` is active.
@@ -53,8 +62,9 @@
     - Added `registerArgumentConverter` to `AppNav` for defining custom decoding logic for route arguments.
 
 ## 0.0.25
-- **Fix**:
- 
+- **Bug Fixes & Network Refinement**:
+    - Corrected potential type mismatch error when processing server error messages in raw JSON payloads.
+    - Standardized empty error body fallback behavior during network failure handling.
 ## 0.0.24
 - **New Feature**:
     - Created `LaunchMonitor` in `lib/apm/launch_monitor.dart` to track specific lifecycle stages: main entry, initialization start/end, and first frame rendering.
@@ -133,24 +143,24 @@
 
 
 ## 0.0.16
-
-* **AppNav: onRoutePushed, onRoutePopped**:
+- **AppNav & Lifecycle Observers**:
+    - Added `onRoutePushed` and `onRoutePopped` callback hooks in `AppNav` to allow view models and routers to subscribe to route push/pop lifecycle transitions.
 
 ## 0.0.15
-
-* **Fix: SpUtil**:
+- **Fix: SpUtil**:
+    - Resolved key serialization issues in `SpUtil` when storing complex configurations.
 
 ## 0.0.14
-
-* **Upgrade Dio**:
+- **Upgrade Dio**:
+    - Upgraded `dio` dependency to the latest major version and refactored request options configuration to align with the new API.
 
 ## 0.0.13
-
-* **Fix Bug:effectController.isClosed**:
+- **Fix Bug: effectController.isClosed**:
+    - Added a safe guard check to prevent sending events to the disposed stream controller `effectController`, resolving `StateError: Cannot add event after close`.
 
 ## 0.0.12
-
-* **MviPlaybackObserver**:
+- **MviPlaybackObserver**:
+    - Introduced `MviPlaybackObserver` to enable record-and-playback features for MVI intents and states during testing and visual debugging.
 
 ## 0.0.11
 
