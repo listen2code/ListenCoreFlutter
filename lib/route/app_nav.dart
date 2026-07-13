@@ -68,8 +68,14 @@ class AppNav {
   static String? get currentRouteName => _currentRouteName;
   static Object? get currentArgs => _currentArgs;
 
+  /// Notifier to listen to route changes (push, pop, or replace).
+  static final ValueNotifier<String?> routeChangeNotifier = ValueNotifier(null);
+
   @visibleForTesting
-  static set currentRouteName(String? routeName) => _currentRouteName = routeName;
+  static set currentRouteName(String? routeName) {
+    _currentRouteName = routeName;
+    routeChangeNotifier.value = routeName;
+  }
 
   @visibleForTesting
   static set currentArgs(Object? args) => _currentArgs = args;
@@ -340,26 +346,29 @@ class AppNav {
 
 /// Internal observer inheriting from RouteObserver to support both arguments syncing and RouteAware lifecycle.
 class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
+  void _updateRoute(String? routeName, Object? arguments) {
+    AppNav._currentArgs = arguments;
+    AppNav._currentRouteName = routeName;
+    AppNav.routeChangeNotifier.value = routeName;
+  }
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    AppNav._currentArgs = route.settings.arguments;
-    AppNav._currentRouteName = route.settings.name;
+    _updateRoute(route.settings.name, route.settings.arguments);
     AppNav.onRoutePushed?.call(route, previousRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
-    AppNav._currentArgs = previousRoute?.settings.arguments;
-    AppNav._currentRouteName = previousRoute?.settings.name;
+    _updateRoute(previousRoute?.settings.name, previousRoute?.settings.arguments);
     AppNav.onRoutePopped?.call(route, previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-    AppNav._currentArgs = newRoute?.settings.arguments;
-    AppNav._currentRouteName = newRoute?.settings.name;
+    _updateRoute(newRoute?.settings.name, newRoute?.settings.arguments);
   }
 }

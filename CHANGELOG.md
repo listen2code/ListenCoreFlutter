@@ -1,3 +1,11 @@
+## 0.0.34
+- **Navigation Features**:
+    - Added `routeChangeNotifier` to the `AppNav` class to allow components to listen to navigation events (push, pop, or replace).
+    - Updated the `currentRouteName` setter to automatically trigger notifications when the route name is updated.
+- **Refactoring**:
+    - Introduced a private `_updateRoute` helper method in `_AppNavObserver` to centralize the logic for updating route arguments and names.
+    - Simplified `didPush`, `didPop`, and `didReplace` by using the new unified state update logic.
+
 ## 0.0.33
 - **Networking Enhancements**:
     - Introduced `CacheDataSource` abstract class in `base_repository.dart` to encapsulate data persistence logic.
