@@ -785,7 +785,6 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   @override
   @mustCallSuper
   void onDispose() {
-    emitEffect(LoadingEffect(false));
     appLogger.i('$tag: [LIFECYCLE] -> onDispose (Widget Disposed)');
     if (!_isRiverpodManaged) {
       _performRealDispose('Widget Disposed (Fallback)');

@@ -4,25 +4,32 @@ import 'package:fpdart/fpdart.dart';
 
 import '../core.dart';
 
+abstract class CacheDataSource<T> {
+  Future<void> cache(T data);
+  Future<T?> getCached();
+}
+
 mixin BaseRepository {
   /// Internal access to network info without injecting it into every repository.
   NetworkInfo get _networkInfo => NetworkInfoImpl(Connectivity());
 
   /// Unified network call wrapper with optional caching support.
   /// - [call]: The primary remote data source execution.
-  /// - [saveCache]: Optional callback to persist data upon successful network response.
-  /// - [getCached]: Optional callback to retrieve stale data if the network fails.
+  /// - [saveCache]: Optional callback to execute custom cache/persistence side-effects upon success.
+  /// - [cacheDataSource]: Generic cache data source to handle get/save logic automatically.
   /// - [useCacheCondition]: Optional filter to decide if specific Failures should trigger cache fallback.
   Future<Either<Failure, T>> safeCall<T>({
     required Future<BaseResponseModel<T>> Function() call,
     Future<void> Function(T data)? saveCache,
-    Future<T?> Function()? getCached,
+    CacheDataSource<T>? cacheDataSource,
     bool Function(Failure failure)? useCacheCondition,
   }) async {
+    final cachedGetter = cacheDataSource?.getCached;
+
     // 1. Connectivity Check & Immediate Cache Fallback
     if (!await _networkInfo.isConnected) {
-      if (getCached != null) {
-        final cached = await getCached();
+      if (cachedGetter != null) {
+        final cached = await cachedGetter();
         if (cached != null) {
           appLogger.d('Repository: No connection, returning cached data.');
           return Right(cached);
@@ -37,7 +44,11 @@ mixin BaseRepository {
       // 2. Handle Success
       if (response.result == ApiResult.success) {
         final data = response.body as T;
-        if (saveCache != null) await saveCache(data);
+        if (saveCache != null) {
+          await saveCache(data);
+        } else if (cacheDataSource != null) {
+          await cacheDataSource.cache(data);
+        }
         return Right(data);
       }
 
@@ -51,14 +62,14 @@ mixin BaseRepository {
         failure = ServerFailure(response.message ?? 'Unknown Server Error');
       }
 
-      return await _handleFailureFallback(failure, getCached, useCacheCondition);
+      return await _handleFailureFallback(failure, cachedGetter, useCacheCondition);
     } on DioException catch (e) {
       final innerError = e.error;
       final errorInfo = innerError is AppException
           ? '${innerError.typeName}: ${innerError.message}'
           : '${e.type}: ${e.message ?? e.error ?? "Unknown network error"}';
       appLogger.e('Repository API Error [${e.requestOptions.path}]: $errorInfo');
-      return await _handleFailureFallback(_mapDioException(e), getCached, useCacheCondition);
+      return await _handleFailureFallback(_mapDioException(e), cachedGetter, useCacheCondition);
     } on TypeError catch (e, t) {
       appLogger.e('Repository Data Type Mismatch: $e \n$t');
       return const Left(ParseFailure('Unexpected data format from server'));

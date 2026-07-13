@@ -1,3 +1,11 @@
+## 0.0.33
+- **Networking Enhancements**:
+    - Introduced `CacheDataSource` abstract class in `base_repository.dart` to encapsulate data persistence logic.
+    - Updated `BaseRepository.safeCall` to support `CacheDataSource`, automating cache retrieval and storage while maintaining backward compatibility with manual callbacks.
+- **Lifecycle & UI Management**:
+    - Centralized loading state dismissal by moving `LoadingEffect(false)` emission from `BaseViewModel.onDispose` to `BaseLifecyclePage`.
+    - Added explicit `ProviderRegistry` calls to stop loading animations in `BaseLifecyclePage` during navigation events and widget disposal to prevent lingering UI states.
+
 ## 0.0.32
 - **Asset Generation Control**:
     - Added `.flutter_assets_generator.yaml` configuration in package root to explicitly disable automatic `assets.dart` generation, preventing pollution of the `lib/generated` directory.

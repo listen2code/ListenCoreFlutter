@@ -152,6 +152,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         // page does not receive and process duplicate VM side-effects (e.g. showing dialogs twice).
         _effectSubscription?.cancel();
         _effectSubscription = null;
+        ProviderRegistry.handle(LoadingEffect(false));
       },
     );
 
@@ -283,6 +284,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     AppNav.observer.unsubscribe(_routeObserver);
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     _trigger((l) => l.onDispose());
+    ProviderRegistry.handle(LoadingEffect(false));
     super.dispose();
   }
 
