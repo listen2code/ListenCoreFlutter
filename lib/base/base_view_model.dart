@@ -103,7 +103,7 @@ abstract class BaseViewModel<I> implements PageLifecycle {
   /// ```dart
   /// viewModel.handleIntent(LoadUserIntent('123'));
   /// ```
-  FutureOr<void> handleIntent(I intent, {bool? useZone});
+  FutureOr<void> handleIntent(I intent, {bool? useZone, bool? needLogin});
 
   /// Registers a handler for UI effects and manages its lifecycle.
   ///
@@ -405,8 +405,32 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
   ///
   /// [intent] is the intent to be handled.
   /// [useZone] can manually override the default Zone policy.
+  /// Global delegate for checking user authentication.
+  static bool Function()? isUserAuthenticated;
+
+  /// Global delegate for triggering user login flow.
+  static void Function({required VoidCallback onSuccess, VoidCallback? onFail})? triggerLogin;
+
+  /// Override this to check if a specific intent requires authentication.
+  bool checkNeedLogin(I intent) => false;
+
   @override
-  FutureOr<void> handleIntent(I intent, {bool? useZone}) {
+  FutureOr<void> handleIntent(I intent, {bool? useZone, bool? needLogin}) {
+    final effectiveNeedLogin = needLogin ?? checkNeedLogin(intent);
+    if (effectiveNeedLogin && isUserAuthenticated != null && !isUserAuthenticated!()) {
+      if (triggerLogin != null) {
+        appLogger.d('$tag: [AUTH_GUARD] Intercepted $intent, redirecting to login');
+        triggerLogin!(
+          onSuccess: () {
+            appLogger.d('$tag: [AUTH_GUARD] Login succeeded, resuming $intent');
+            handleIntent(intent, useZone: useZone);
+          },
+        );
+      } else {
+        appLogger.w('$tag: [AUTH_GUARD] triggerLogin delegate is not registered, discarding intent');
+      }
+      return null;
+    }
     final effectiveUseZone = useZone ?? shouldUseZone(intent);
     return dispatch(intent, () => onIntent(intent), useZone: effectiveUseZone);
   }

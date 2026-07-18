@@ -1,3 +1,14 @@
+## 0.0.36
+- **Intent Handling**:
+    - Updated `handleIntent` to accept an optional `needLogin` parameter.
+    - Introduced `checkNeedLogin(intent)` to allow subclasses to define authentication requirements per intent.
+- **Authentication Integration**:
+    - Added static delegates `isUserAuthenticated` and `triggerLogin` to `BaseViewModel` to provide global access to authentication state and flows.
+- **Guard Logic**:
+    - Implemented interception logic in `handleIntent` that checks authentication status.
+    - Added support for triggering a login flow and automatically re-dispatching the original intent after a successful login.
+    - Included logging for intent interception, resumption, and cases where required delegates are missing.
+
 ## 0.0.35
 - **UI & Layout Adaptability**:
     - Modified `BaseLifeCyclePage`'s root `Stack` fit constraint to be dynamic based on the `useScaffold` configuration.
