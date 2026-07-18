@@ -296,7 +296,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         // Use a Stack instead of conditional returning to keep the 'body'
         // widget tree (and its ViewModel state) alive during loading toggles.
         Widget content = Stack(
-          fit: StackFit.expand, // Ensures the stack (and Positioned.fill children) fill available space.
+          fit: widget.useScaffold ? StackFit.expand : StackFit.loose, // Ensures full screen for pages, wrap content for sheets
           children: [
             // Normal content is always present to preserve State/ViewModel continuity.
             widget.body(context, child),

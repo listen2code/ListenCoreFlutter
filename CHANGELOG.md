@@ -1,3 +1,8 @@
+## 0.0.35
+- **UI & Layout Adaptability**:
+    - Modified `BaseLifeCyclePage`'s root `Stack` fit constraint to be dynamic based on the `useScaffold` configuration.
+    - Sets the `Stack` fit to `StackFit.expand` when `useScaffold` is `true` (standard for full-screen pages), and to `StackFit.loose` when `useScaffold` is `false` (standard for embedded panels, dialogs, and bottom sheets). This allows nested/embedded MVI lifecycle views to correctly wrap their content and adapt to natural content height instead of being stretched vertically.
+
 ## 0.0.34
 - **Navigation Features**:
     - Added `routeChangeNotifier` to the `AppNav` class to allow components to listen to navigation events (push, pop, or replace).
