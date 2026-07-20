@@ -1,3 +1,10 @@
+## 0.0.39
+- **Refactoring**:
+    - Renamed `lib/utils/cache_manager.dart` to `lib/utils/disk_cleanup_util.dart` and updated the class name to `DiskCleanupUtil`.
+    - Updated `lib/core.dart` to export the new file path.
+- **Web Compatibility**:
+    - Added `kIsWeb` checks to `getCacheSize()` and `clearAllCache()` to prevent errors and return default values when running on the web platform.
+
 ## 0.0.38
 - **API Enhancements**:
     - Added `expandBody` boolean to `BaseLifecyclePage` to determine if the body should fill the parent container.
