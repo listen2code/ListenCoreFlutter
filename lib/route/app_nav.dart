@@ -30,6 +30,14 @@ class AppNavConfig {
   static final List<String> _schemes = [];
   static List<String> get schemes => _schemes;
 
+  static final List<RouteInterceptor> _interceptors = [];
+  static List<RouteInterceptor> get interceptors => _interceptors;
+
+  static void registerInterceptors(List<RouteInterceptor> interceptors) {
+    _interceptors.addAll(interceptors);
+    _interceptors.sort((a, b) => a.priority.compareTo(b.priority));
+  }
+
   static void register({
     required bool Function() isGuest,
     required Future<bool> Function(BuildContext context) onLogin,
@@ -46,6 +54,10 @@ class AppNavConfig {
     if (schemes != null) {
       _schemes.clear();
       _schemes.addAll(schemes);
+    }
+
+    if (!_interceptors.any((i) => i is LoginRouteInterceptor)) {
+      registerInterceptors([loginRouteInterceptor]);
     }
   }
 
@@ -136,48 +148,56 @@ class AppNav {
   }) {
     final completer = Completer<T?>();
 
-    tryLogin(
+    String? targetRouteName;
+    if (target is Widget) {
+      targetRouteName = target.runtimeType.toString();
+    } else if (target is String) {
+      final cleanTarget = _stripScheme(target);
+      if (cleanTarget.contains('?')) {
+        targetRouteName = cleanTarget.substring(0, cleanTarget.indexOf('?'));
+      } else {
+        targetRouteName = cleanTarget;
+      }
+    }
+
+    _runInterceptors(
+      routeName: targetRouteName,
+      arguments: arguments,
       needLogin: needLogin,
-      onSuccess: () {
-        final Route<T>? route = _resolveRoute<T>(target, arguments);
-        if (route == null) {
-          completer.complete(null);
-          return;
-        }
+    ).then((shouldProceed) {
+      if (!shouldProceed) {
+        completer.complete(null);
+        return;
+      }
 
-        String? targetRouteName;
-        if (target is Widget) {
-          targetRouteName = target.runtimeType.toString();
-        } else if (target is String) {
-          final cleanTarget = _stripScheme(target);
-          if (cleanTarget.contains('?')) {
-            targetRouteName = cleanTarget.substring(0, cleanTarget.indexOf('?'));
-          } else {
-            targetRouteName = cleanTarget;
-          }
-        }
+      final Route<T>? route = _resolveRoute<T>(target, arguments);
+      if (route == null) {
+        completer.complete(null);
+        return;
+      }
 
-        // Check if the target route is already the currently active route.
-        // If so, we can either perform a pushReplacement or directly return based on the replaceIfExists flag.
-        final isAlreadyOnTarget = targetRouteName != null && _currentRouteName == targetRouteName;
+      // Check if the target route is already the currently active route.
+      // If so, we can either perform a pushReplacement or directly return based on the replaceIfExists flag.
+      final isAlreadyOnTarget = targetRouteName != null && _currentRouteName == targetRouteName;
 
-        if (isAlreadyOnTarget) {
-          if (replaceIfExists) {
-            AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
-              completer.complete(value);
-            });
-          } else {
-            appLogger.i('AppNav: Target route $targetRouteName is already current. Ignoring navigation.');
-            completer.complete(null);
-          }
-        } else {
-          AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
+      if (isAlreadyOnTarget) {
+        if (replaceIfExists) {
+          AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
             completer.complete(value);
           });
+        } else {
+          appLogger.i('AppNav: Target route $targetRouteName is already current. Ignoring navigation.');
+          completer.complete(null);
         }
-      },
-      onFail: () => completer.complete(null),
-    );
+      } else {
+        AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
+          completer.complete(value);
+        });
+      }
+    }).catchError((e) {
+      appLogger.e('AppNav: Error running interceptors in to(): $e');
+      completer.complete(null);
+    });
 
     return completer.future;
   }
@@ -185,20 +205,40 @@ class AppNav {
   static Future<T?>? off<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
     final completer = Completer<T?>();
 
-    tryLogin(
+    String? targetRouteName;
+    if (target is Widget) {
+      targetRouteName = target.runtimeType.toString();
+    } else if (target is String) {
+      final cleanTarget = _stripScheme(target);
+      if (cleanTarget.contains('?')) {
+        targetRouteName = cleanTarget.substring(0, cleanTarget.indexOf('?'));
+      } else {
+        targetRouteName = cleanTarget;
+      }
+    }
+
+    _runInterceptors(
+      routeName: targetRouteName,
+      arguments: arguments,
       needLogin: needLogin,
-      onSuccess: () {
-        final Route<T>? route = _resolveRoute<T>(target, arguments);
-        if (route == null) {
-          completer.complete(null);
-          return;
-        }
-        AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
-          completer.complete(value);
-        });
-      },
-      onFail: () => completer.complete(null),
-    );
+    ).then((shouldProceed) {
+      if (!shouldProceed) {
+        completer.complete(null);
+        return;
+      }
+
+      final Route<T>? route = _resolveRoute<T>(target, arguments);
+      if (route == null) {
+        completer.complete(null);
+        return;
+      }
+      AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
+        completer.complete(value);
+      });
+    }).catchError((e) {
+      appLogger.e('AppNav: Error running interceptors in off(): $e');
+      completer.complete(null);
+    });
 
     return completer.future;
   }
@@ -214,31 +254,51 @@ class AppNav {
   }) {
     final completer = Completer<T?>();
 
-    tryLogin(
+    String? targetRouteName;
+    if (target is Widget) {
+      targetRouteName = target.runtimeType.toString();
+    } else if (target is String) {
+      final cleanTarget = _stripScheme(target);
+      if (cleanTarget.contains('?')) {
+        targetRouteName = cleanTarget.substring(0, cleanTarget.indexOf('?'));
+      } else {
+        targetRouteName = cleanTarget;
+      }
+    }
+
+    _runInterceptors(
+      routeName: targetRouteName,
+      arguments: arguments,
       needLogin: needLogin,
-      onSuccess: () {
-        if (isReplace) {
-          // Create new route and replace entire stack
-          final Route<T>? route = _resolveRoute<T>(target, arguments);
-          if (route == null) {
-            completer.complete(null);
-            return;
-          }
-          AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
-            completer.complete(value);
-          });
-        } else {
-          // Pop until target route (must be a String route name)
-          if (target is String) {
-            AppNavConfig.navigatorKey.currentState?.popUntil((route) {
-              return route.settings.name == target;
-            });
-          }
+    ).then((shouldProceed) {
+      if (!shouldProceed) {
+        completer.complete(null);
+        return;
+      }
+
+      if (isReplace) {
+        // Create new route and replace entire stack
+        final Route<T>? route = _resolveRoute<T>(target, arguments);
+        if (route == null) {
           completer.complete(null);
+          return;
         }
-      },
-      onFail: () => completer.complete(null),
-    );
+        AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
+          completer.complete(value);
+        });
+      } else {
+        // Pop until target route (must be a String route name)
+        if (target is String) {
+          AppNavConfig.navigatorKey.currentState?.popUntil((route) {
+            return route.settings.name == target;
+          });
+        }
+        completer.complete(null);
+      }
+    }).catchError((e) {
+      appLogger.e('AppNav: Error running interceptors in offAll(): $e');
+      completer.complete(null);
+    });
 
     return completer.future;
   }
@@ -308,39 +368,39 @@ class AppNav {
     );
   }
 
-  static void tryLogin({required VoidCallback onSuccess, VoidCallback? onFail, bool needLogin = true}) {
-    final bool isGuest = AppNavConfig.isGuestCheck?.call() ?? true;
-    if (needLogin && isGuest) {
-      final context = AppNavConfig.context;
-      final loginRedirect = AppNavConfig.onLoginRedirect;
-      if (context == null || loginRedirect == null) return;
-
-      void performLoginFlow() {
-        loginRedirect(context).then((success) {
-          if (success) {
-            AppNavConfig.onLoginSuccessCallback?.call();
-            onSuccess();
-          } else {
-            onFail?.call();
-          }
-        });
+  static Future<bool> _runInterceptors({
+    required String? routeName,
+    required Object? arguments,
+    required bool needLogin,
+  }) async {
+    for (final interceptor in AppNavConfig.interceptors) {
+      final shouldProceed = await interceptor.intercept(
+        routeName: routeName,
+        arguments: arguments,
+        needLogin: needLogin,
+      );
+      if (!shouldProceed) {
+        return false;
       }
-
-      final showPrompt = AppNavConfig.onShowLoginDialogCallback;
-      if (showPrompt != null) {
-        showPrompt(context).then((confirmed) {
-          if (confirmed) {
-            performLoginFlow();
-          } else {
-            onFail?.call();
-          }
-        });
-      } else {
-        performLoginFlow();
-      }
-    } else {
-      onSuccess();
     }
+    return true;
+  }
+
+  static void tryLogin({required VoidCallback onSuccess, VoidCallback? onFail, bool needLogin = true}) {
+    _runInterceptors(
+      routeName: null,
+      arguments: null,
+      needLogin: needLogin,
+    ).then((shouldProceed) {
+      if (shouldProceed) {
+        onSuccess();
+      } else {
+        onFail?.call();
+      }
+    }).catchError((e) {
+      appLogger.e('AppNav: Error in tryLogin interceptor execution: $e');
+      onFail?.call();
+    });
   }
 }
 
