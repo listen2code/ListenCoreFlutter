@@ -60,6 +60,10 @@ class BaseLifeCyclePage extends StatefulWidget {
   /// Set to false when using this as a sub-page/tab within another page.
   final bool useScaffold;
 
+  /// Whether the page body should expand to fill the parent container when [useScaffold] is false.
+  /// Useful for tabs inside an [IndexedStack] (should be true) versus bottom sheets (should be false).
+  final bool expandBody;
+
   /// Whether to enable viewport visibility detection (onViewVisible/onViewInVisible).
   /// Disable this for simple static pages to improve performance.
   final bool useVisibilityDetector;
@@ -92,6 +96,7 @@ class BaseLifeCyclePage extends StatefulWidget {
     this.onLoading,
     this.onEmpty,
     this.useScaffold = true,
+    this.expandBody = true,
     this.useVisibilityDetector = true,
   });
 
@@ -296,7 +301,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         // Use a Stack instead of conditional returning to keep the 'body'
         // widget tree (and its ViewModel state) alive during loading toggles.
         Widget content = Stack(
-          fit: widget.useScaffold ? StackFit.expand : StackFit.loose, // Ensures full screen for pages, wrap content for sheets
+          fit: (widget.useScaffold || widget.expandBody) ? StackFit.expand : StackFit.loose, // Ensures full screen for pages/tabs, wrap content for sheets
           children: [
             // Normal content is always present to preserve State/ViewModel continuity.
             widget.body(context, child),

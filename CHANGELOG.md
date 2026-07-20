@@ -1,3 +1,10 @@
+## 0.0.38
+- **API Enhancements**:
+    - Added `expandBody` boolean to `BaseLifecyclePage` to determine if the body should fill the parent container.
+    - Updated the constructor to include `expandBody` with a default value of `true`.
+- **Layout Logic**:
+    - Updated the internal `Stack` to use `StackFit.expand` if either `useScaffold` or `expandBody` is true. This ensures full-screen behavior for tabs while allowing bottom sheets to wrap content by setting `expandBody` to false.
+  
 ## 0.0.37
 - **Lifecycle & Navigation Gesture**:
     - Updated `BaseLifeCyclePage` to evaluate page active state (`widget.active`) during pop gesture handling.
