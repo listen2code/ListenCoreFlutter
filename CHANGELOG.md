@@ -1,3 +1,8 @@
+## 0.0.37
+- **Lifecycle & Navigation Gesture**:
+    - Updated `BaseLifeCyclePage` to evaluate page active state (`widget.active`) during pop gesture handling.
+    - Prevented inactive background Tab pages inside layout stacks (like `IndexedStack`) from intercepting or hijacking the system back gesture (by enforcing `canPop: true` and returning early in `onPopInvokedWithResult` when the page is inactive).
+
 ## 0.0.36
 - **Intent Handling**:
     - Updated `handleIntent` to accept an optional `needLogin` parameter.

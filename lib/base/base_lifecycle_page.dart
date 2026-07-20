@@ -347,8 +347,9 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         }
 
         return PopScope(
-          canPop: (widget.canPop ?? true) && !_isInternalLoading.value,
+          canPop: !widget.active || ((widget.canPop ?? true) && !_isInternalLoading.value),
           onPopInvokedWithResult: (didPop, resultVal) {
+            if (!widget.active) return;
             if (didPop) {
               // Page successfully popped. Cancel pending requests immediately to release network resources.
               _viewModel?.cancelRequests("onBackInvoked");
