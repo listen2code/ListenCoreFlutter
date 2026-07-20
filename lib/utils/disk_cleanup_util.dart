@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 
-class CacheManager {
-  CacheManager._();
+class DiskCleanupUtil {
+  DiskCleanupUtil._();
 
   static Future<String> getCacheSize() async {
+    if (kIsWeb) return '0 MB';
     try {
       final tempDir = await getTemporaryDirectory();
       double size = await _getTotalSizeOfDir(tempDir);
@@ -16,6 +18,7 @@ class CacheManager {
   }
 
   static Future<void> clearAllCache() async {
+    if (kIsWeb) return;
     try {
       final tempDir = await getTemporaryDirectory();
       if (tempDir.existsSync()) {

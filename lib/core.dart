@@ -28,7 +28,7 @@ export 'network/network_info.dart';
 export 'route/app_nav.dart';
 export 'route/deep_link_manager.dart';
 export 'route/route_interceptor.dart';
-export 'utils/cache_manager.dart';
+export 'utils/disk_cleanup_util.dart';
 export 'utils/crash_manager.dart';
 export 'utils/device_info.dart';
 export 'utils/event_bus.dart';
