@@ -38,6 +38,7 @@ export 'utils/logger.dart';
 export 'utils/package_info.dart';
 export 'utils/secure_storage_util.dart';
 export 'utils/sp_util.dart';
+export 'utils/build_context_extension.dart';
 export 'utils/string_extension.dart';
 export 'utils/validators.dart';
 export 'utils/zone_manager.dart';

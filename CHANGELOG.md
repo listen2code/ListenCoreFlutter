@@ -1,3 +1,13 @@
+## 0.0.40
+- **Audit Log Updates**:
+    - Marked `BaseRepository` network info refactoring as completed, utilizing a global lazy singleton to eliminate instantiation overhead.
+    - Documented the fix for `ApiClient` initialization timing using `late final` and safe default timeouts to decouple from `AppEnv`.
+    - Updated status for `CacheManager` renaming to `DiskCleanupUtil` to clarify its responsibility versus repository caching.
+    - Confirmed the unification of `RouteInterceptor` and `AppNav`, implementing a guard-based filtering chain for navigation.
+- **Roadmap Maintenance**:
+    - Updated `todo.md` to reflect completed milestones for system back gesture handling, routing guards, and the Intent/Effect playback system.
+    - Logged progress on adding high-frequency extensions to the core library.
+
 ## 0.0.39
 - **Refactoring**:
     - Renamed `lib/utils/cache_manager.dart` to `lib/utils/disk_cleanup_util.dart` and updated the class name to `DiskCleanupUtil`.
