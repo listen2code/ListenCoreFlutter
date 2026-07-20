@@ -1,4 +1,3 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -11,7 +10,7 @@ abstract class CacheDataSource<T> {
 
 mixin BaseRepository {
   /// Internal access to network info without injecting it into every repository.
-  NetworkInfo get _networkInfo => NetworkInfoImpl(Connectivity());
+  NetworkInfo get _networkInfo => Core.networkInfo;
 
   /// Unified network call wrapper with optional caching support.
   /// - [call]: The primary remote data source execution.

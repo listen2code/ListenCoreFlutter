@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart' hide RoutePageBuilder;
 
 import 'core.dart';
@@ -88,6 +89,17 @@ class Core {
 
   static late final IDeviceInfo deviceInfo;
   static late final IPackageInfo packageInfo;
+
+  static NetworkInfo? _networkInfo;
+
+  static NetworkInfo get networkInfo {
+    _networkInfo ??= NetworkInfoImpl(Connectivity());
+    return _networkInfo!;
+  }
+
+  static set networkInfo(NetworkInfo value) {
+    _networkInfo = value;
+  }
 
   /// Initializes all core utilities in the correct order.
   static Future<void> init(CoreConfig config) async {
