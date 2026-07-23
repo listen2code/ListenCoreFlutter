@@ -2,9 +2,10 @@
 /// Exceptions are thrown at the data layer and converted to Failures at the repository layer
 class AppException implements Exception {
   final String message;
+  final String? messageId;
   final int? statusCode;
 
-  AppException(this.message, [this.statusCode]);
+  AppException(this.message, [this.messageId, this.statusCode]);
 
   String get typeName => 'AppException';
 
@@ -13,7 +14,7 @@ class AppException implements Exception {
 }
 
 class ServerException extends AppException {
-  ServerException(super.message, [super.statusCode]);
+  ServerException(super.message, [super.messageId, super.statusCode]);
 
   @override
   String get typeName => 'ServerException';
@@ -34,7 +35,7 @@ class CacheException extends AppException {
 }
 
 class AuthException extends AppException {
-  AuthException(super.message, [super.statusCode]);
+  AuthException(super.message, [super.messageId, super.statusCode]);
 
   @override
   String get typeName => 'AuthException';

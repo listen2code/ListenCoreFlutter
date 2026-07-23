@@ -82,7 +82,12 @@ mixin BaseRepository {
   Failure _mapDioException(DioException e) {
     if (e.error is AppException) {
       final appEx = e.error as AppException;
-      if (appEx is AuthException) return AuthFailure(appEx.message);
+      if (appEx is AuthException) {
+        return AuthFailure(appEx.message, messageId: appEx.messageId);
+      }
+      if (appEx.messageId != null) {
+        return ServerApiFailure(appEx.message, messageId: appEx.messageId);
+      }
       return ServerFailure(appEx.message);
     }
     return ServerFailure(e.message ?? 'Network Error');

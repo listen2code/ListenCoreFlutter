@@ -1,3 +1,11 @@
+## 0.0.41
+- **Internationalization (i18n) Support**:
+    - Added `messageId` field to `AppException` and its subclasses (`ServerException`, `AuthException`) to propagate backend localization keys to the application layer.
+    - Updated `AuthFailure` to support `messageId` field, enabling localized authentication error handling.
+    - Enhanced `ErrorInterceptor` to extract the `messageId` field from bad HTTP responses (JSON payload) and inject it into the generated exception.
+    - Modified `BaseRepository` mapping logic (`_mapDioException`) to preserve `messageId` when mapping exceptions to `AuthFailure` or `ServerApiFailure`.
+    - Upgraded `ErrorMapper` to resolve translations for both `ServerApiFailure` and `AuthFailure` using their `messageId` against the translation engine (`tr`).
+
 ## 0.0.40
 - **Audit Log Updates**:
     - Marked `BaseRepository` network info refactoring as completed, utilizing a global lazy singleton to eliminate instantiation overhead.

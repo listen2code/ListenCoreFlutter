@@ -15,7 +15,9 @@ class ErrorInterceptor extends Interceptor {
         break;
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
-        var message = err.response?.data?[BaseResponseModel.messageKey]?.toString();
+        final data = err.response?.data;
+        var message = data?[BaseResponseModel.messageKey]?.toString();
+        final messageId = data?[BaseResponseModel.messageIdKey]?.toString();
         if (message.isNullOrBlank) {
           message = err.message;
         }
@@ -23,11 +25,11 @@ class ErrorInterceptor extends Interceptor {
           message = 'HTTP bad response';
         }
         if (statusCode == HttpCode.unauthorized || statusCode == HttpCode.forbidden) {
-          exception = AuthException(message!, statusCode);
+          exception = AuthException(message!, messageId, statusCode);
         } else if (statusCode != null && statusCode >= HttpCode.internalServerError) {
-          exception = ServerException('Internal Server Error: $message', statusCode);
+          exception = ServerException('Internal Server Error: $message', messageId, statusCode);
         } else {
-          exception = ServerException(message!, statusCode);
+          exception = ServerException(message!, messageId, statusCode);
         }
         break;
       case DioExceptionType.badCertificate:

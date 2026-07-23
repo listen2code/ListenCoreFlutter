@@ -12,17 +12,14 @@ class ErrorMapper {
 
     if (failure is ServerApiFailure) {
       messageId = failure.messageId;
-      if (messageId != null && messageId.isNotEmpty) {
-        final translated = messageId.tr;
-        if (translated != messageId) {
-          translatedMessage = translated;
-        } else {
-          // Fallback: translate the raw message
-          final msgTr = failure.message.tr;
-          if (msgTr != failure.message) {
-            translatedMessage = msgTr;
-          }
-        }
+    } else if (failure is AuthFailure) {
+      messageId = failure.messageId;
+    }
+
+    if (messageId != null && messageId.isNotEmpty) {
+      final translated = messageId.tr;
+      if (translated != messageId) {
+        translatedMessage = translated;
       } else {
         // Fallback: translate the raw message
         final msgTr = failure.message.tr;
@@ -50,7 +47,7 @@ class ErrorMapper {
     } else if (failure is ValidationFailure) {
       return ValidationFailure(translatedMessage);
     } else if (failure is AuthFailure) {
-      return AuthFailure(translatedMessage);
+      return AuthFailure(translatedMessage, messageId: messageId);
     } else if (failure is ParseFailure) {
       return ParseFailure(translatedMessage);
     } else if (failure is UnknownFailure) {

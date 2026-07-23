@@ -70,10 +70,23 @@ class ValidationFailure extends Failure {
 }
 
 class AuthFailure extends Failure {
-  const AuthFailure(super.message);
+  final String? messageId;
+  const AuthFailure(super.message, {this.messageId});
 
   @override
   String get typeName => 'AuthFailure';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is AuthFailure && other.message == message && other.messageId == messageId;
+  }
+
+  @override
+  int get hashCode => message.hashCode ^ messageId.hashCode;
+
+  @override
+  String toString() => '$typeName(message: $message, messageId: $messageId)';
 }
 
 class ParseFailure extends Failure {
