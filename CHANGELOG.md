@@ -1,3 +1,11 @@
+## 0.0.42
+- **Local Mock Server**:
+    - Added a static `_mockedUserBody` variable to maintain user state during the server's lifecycle.
+    - Implemented a handler for `POST /v1/user/upload-avatar` that intercepts base64 avatar data, updates the mock user profile, and persists the change in memory.
+    - Updated the `GET /v1/user` endpoint to return the dynamically updated user data if available, overriding the static asset file.
+- **String Extensions**:
+    - Added a `imageMimeType` extension property to `String` to map common image file extensions (png, gif, webp, bmp, jpeg) to their respective MIME types.
+
 ## 0.0.41
 - **Internationalization (i18n) Support**:
     - Added `messageId` field to `AppException` and its subclasses (`ServerException`, `AuthException`) to propagate backend localization keys to the application layer.

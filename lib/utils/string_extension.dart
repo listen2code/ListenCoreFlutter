@@ -32,4 +32,16 @@ extension StringExtension on String {
   double toDouble({double defaultValue = 0.0}) {
     return double.tryParse(this) ?? defaultValue;
   }
+
+  /// Returns the corresponding MIME type for an image file path extension.
+  String get imageMimeType {
+    final ext = split('.').last.toLowerCase();
+    return switch (ext) {
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      'bmp' => 'image/bmp',
+      _ => 'image/jpeg',
+    };
+  }
 }

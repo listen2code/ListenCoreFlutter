@@ -10,6 +10,7 @@ import '../core.dart';
 class LocalMockServer {
   static HttpServer? _server;
   static int port = 9999;
+  static Map<String, dynamic>? _mockedUserBody;
 
   // Supported image extensions and their corresponding ContentTypes
   static Map<String, String> _imageExtensions = {
@@ -35,6 +36,7 @@ class LocalMockServer {
 
   /// Starts the server on localhost:9999
   static Future<void> start() async {
+    _mockedUserBody = null;
     if (_server != null) return;
 
     try {
@@ -127,6 +129,47 @@ class LocalMockServer {
           // If image not found in assets, we fall through to JSON resolution or 404 handler
           appLogger.e('MockServer: Resource not found in assets: $assetPath');
         }
+      }
+    }
+
+    // --- ADDED: Handle Dynamic Mock State for User Avatar Upload ---
+    if (uriPath == '/v1/user/upload-avatar' && method == 'post') {
+      try {
+        final Map<String, dynamic> requestBody = jsonDecode(rawBody);
+        final String? avatarBase64 = requestBody['avatar'];
+        if (avatarBase64 != null) {
+          // Load base user.json
+          final String baseUserJson = await rootBundle.loadString('assets/mock/v1/get/user.json');
+          final Map<String, dynamic> userMap = jsonDecode(baseUserJson);
+          if (userMap['body'] != null) {
+            userMap['body']['avatarUrl'] = avatarBase64;
+          }
+          _mockedUserBody = userMap;
+
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode(userMap));
+          
+          appLogger.w('MockServer: <<< [200 OK] Simulated Upload Avatar dynamically.');
+          await request.response.close();
+          return;
+        }
+      } catch (e) {
+        appLogger.e('MockServer: Error simulating upload-avatar: $e');
+      }
+    }
+
+    if (uriPath == '/v1/user' && method == 'get') {
+      if (_mockedUserBody != null) {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode(_mockedUserBody));
+        
+        appLogger.w('MockServer: <<< [200 OK] Returned dynamically mocked user data.');
+        await request.response.close();
+        return;
       }
     }
 
