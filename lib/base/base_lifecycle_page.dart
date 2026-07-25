@@ -68,6 +68,9 @@ class BaseLifeCyclePage extends StatefulWidget {
   /// Disable this for simple static pages to improve performance.
   final bool useVisibilityDetector;
 
+  /// Whether to enable swiping to open the drawer.
+  final bool drawerEnableOpenDragGesture;
+
   const BaseLifeCyclePage({
     super.key,
     required this.body,
@@ -98,6 +101,7 @@ class BaseLifeCyclePage extends StatefulWidget {
     this.useScaffold = true,
     this.expandBody = true,
     this.useVisibilityDetector = true,
+    this.drawerEnableOpenDragGesture = true,
   });
 
   @override
@@ -336,6 +340,7 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
             actions: widget.actions,
             appBar: widget.appBar,
             drawer: widget.drawer,
+            drawerEnableOpenDragGesture: widget.drawerEnableOpenDragGesture,
             floatingActionButton: widget.floatingActionButton,
             useSafeArea: widget.useSafeArea,
             padding: widget.padding,

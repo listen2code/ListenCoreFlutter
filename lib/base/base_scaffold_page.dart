@@ -20,6 +20,7 @@ class BaseScaffoldPage extends StatelessWidget {
   final Color statusBarColor;
   final Color bottomBarColor;
   final bool useGradientBackground;
+  final bool drawerEnableOpenDragGesture;
 
   const BaseScaffoldPage({
     super.key,
@@ -39,6 +40,7 @@ class BaseScaffoldPage extends StatelessWidget {
     this.statusBarColor = Colors.transparent,
     this.bottomBarColor = Colors.transparent,
     this.useGradientBackground = true,
+    this.drawerEnableOpenDragGesture = true,
   });
 
   @override
@@ -73,6 +75,7 @@ class BaseScaffoldPage extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: effectiveAppBar,
       drawer: drawer,
+      drawerEnableOpenDragGesture: drawerEnableOpenDragGesture,
       floatingActionButton: floatingActionButton,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       extendBodyBehindAppBar: extendBodyBehindAppBar,

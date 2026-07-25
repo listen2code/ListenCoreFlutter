@@ -1,3 +1,8 @@
+
+## 0.0.44
+- **BaseScaffoldPage**: Added `drawerEnableOpenDragGesture` property (defaulting to `true`) and passed it to the underlying `Scaffold` widget.
+- **BaseLifeCyclePage**: Added `drawerEnableOpenDragGesture` property to allow configuration of the drawer drag gesture in lifecycle-aware pages.
+
 ## 0.0.43
 - **Environment Configuration**: Removed the `test('test')` enum case from `lib/env/app_env.dart`.
 
