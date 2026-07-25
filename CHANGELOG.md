@@ -1,3 +1,6 @@
+## 0.0.43
+- **Environment Configuration**: Removed the `test('test')` enum case from `lib/env/app_env.dart`.
+
 ## 0.0.42
 - **Local Mock Server**:
     - Added a static `_mockedUserBody` variable to maintain user state during the server's lifecycle.

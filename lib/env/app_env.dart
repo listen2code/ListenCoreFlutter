@@ -5,8 +5,6 @@ enum AppEnvironment {
 
   dev('dev'),
 
-  test('test'),
-
   prod('prod');
 
   final String name;
