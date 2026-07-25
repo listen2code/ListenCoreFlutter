@@ -1,4 +1,13 @@
 
+## 0.0.45
+- **Log Management**:
+    - Added static constants to `LogManager` for common network events: `requestTag`, `responseTag`, `errorTag`, `authInterceptorTag`, `errorInterceptorTag`, and `repositoryTag`.
+- **Network Interceptors**:
+    - Updated `LoggingInterceptor` to use centralized tags and emojis for request, response, and error logs.
+    - Refactored `AuthInterceptor` and `ErrorInterceptor` to use `LogManager` constants instead of hardcoded strings for internal logging.
+- **Repository Layer**:
+    - Updated `BaseRepository` to utilize `LogManager.repositoryTag` for data fetching and cache-related log messages.
+
 ## 0.0.44
 - **BaseScaffoldPage**: Added `drawerEnableOpenDragGesture` property (defaulting to `true`) and passed it to the underlying `Scaffold` widget.
 - **BaseLifeCyclePage**: Added `drawerEnableOpenDragGesture` property to allow configuration of the drawer drag gesture in lifecycle-aware pages.

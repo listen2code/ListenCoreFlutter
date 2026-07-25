@@ -58,7 +58,7 @@ class ErrorInterceptor extends Interceptor {
         break;
     }
 
-    appLogger.e('ErrorInterceptor: DioException(${err.type}, statusCode: ${err.response?.statusCode}) -> ${exception.typeName}(${exception.message})');
+    appLogger.e('${LogManager.errorInterceptorTag}: DioException(${err.type}, statusCode: ${err.response?.statusCode}) -> ${exception.typeName}(${exception.message})');
 
     return handler.next(
       DioException(

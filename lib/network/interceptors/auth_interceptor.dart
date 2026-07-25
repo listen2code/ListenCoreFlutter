@@ -4,6 +4,7 @@ import '../../core.dart';
 
 /// Interceptor that handles automatic access token injection, token refresh, and request queueing for 401 Unauthorized errors.
 class AuthInterceptor extends Interceptor {
+  static const String _tag = LogManager.authInterceptorTag;
   static const String _kIsRefreshedKey = 'is_refreshed';
 
   bool _isRefreshing = false;
@@ -28,11 +29,11 @@ class AuthInterceptor extends Interceptor {
 
     // Do not attempt token refresh if auth is disabled for this request.
     if (is401 && !alreadyRefreshed && !noAuth) {
-      appLogger.w('AuthInterceptor: [401] detected for ${err.requestOptions.uri}');
+      appLogger.w('$_tag: [401] detected for ${err.requestOptions.uri}');
 
       if (!_isRefreshing) {
         _isRefreshing = true;
-        appLogger.i('AuthInterceptor: [REFRESH] -> Starting flow: ${err.requestOptions.uri}');
+        appLogger.i('$_tag: [REFRESH] -> Starting flow: ${err.requestOptions.uri}');
 
         try {
           final bool success = await ApiClient.delegate.onRefreshToken();
@@ -44,7 +45,7 @@ class AuthInterceptor extends Interceptor {
             final options = err.requestOptions.copyWith();
             options.extra[_kIsRefreshedKey] = true;
             appLogger.i(
-              'AuthInterceptor: [REFRESH] -> Success. Retrying original request: ${err.requestOptions.uri}',
+              '$_tag: [REFRESH] -> Success. Retrying original request: ${err.requestOptions.uri}',
             );
 
             try {
@@ -52,28 +53,28 @@ class AuthInterceptor extends Interceptor {
               return handler.resolve(response);
             } catch (retryError) {
               appLogger.e(
-                'AuthInterceptor: [RETRY] -> Original request failed after refresh: ${err.requestOptions.uri}',
+                '$_tag: [RETRY] -> Original request failed after refresh: ${err.requestOptions.uri}',
               );
               return handler.next(retryError is DioException ? retryError : err);
             }
           } else {
-            appLogger.i('AuthInterceptor: [REFRESH] -> Failed after refresh: ${err.requestOptions.uri}');
+            appLogger.i('$_tag: [REFRESH] -> Failed after refresh: ${err.requestOptions.uri}');
             _clearQueueWithError(err);
           }
         } catch (e) {
           _isRefreshing = false;
-          appLogger.e('AuthInterceptor: [REFRESH] -> Exception during refresh: $e');
+          appLogger.e('$_tag: [REFRESH] -> Exception during refresh: $e');
           _clearQueueWithError(e);
         }
       } else {
-        appLogger.i('AuthInterceptor: [QUEUE] -> Refresh in progress, queueing: ${err.requestOptions.uri}');
+        appLogger.i('$_tag: [QUEUE] -> Refresh in progress, queueing: ${err.requestOptions.uri}');
         final completer = Completer<void>();
         _refreshQueue.add(completer);
         try {
           await completer.future;
           final options = err.requestOptions.copyWith();
           options.extra[_kIsRefreshedKey] = true;
-          appLogger.i('AuthInterceptor: [RETRY] -> Retrying queued request: ${err.requestOptions.uri}');
+          appLogger.i('$_tag: [RETRY] -> Retrying queued request: ${err.requestOptions.uri}');
           final response = await ApiClient.dio.fetch(options);
           return handler.resolve(response);
         } catch (_) {

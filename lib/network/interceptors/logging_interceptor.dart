@@ -7,7 +7,7 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final buffer = StringBuffer();
-    buffer.write('🌐 REQUEST [${options.method.toUpperCase()}] => ${options.uri}');
+    buffer.write('${LogManager.requestTag} [${options.method.toUpperCase()}] => ${options.uri}');
 
     if (options.headers.isNotEmpty) {
       buffer.write('\nHeaders: {');
@@ -26,7 +26,7 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final buffer = StringBuffer();
-    buffer.write('✅ RESPONSE [${response.statusCode}] <= ${response.requestOptions.uri}');
+    buffer.write('${LogManager.responseTag} [${response.statusCode}] <= ${response.requestOptions.uri}');
     buffer.write('\nData: ${_prettyJson(response.data)}');
 
     appLogger.i(buffer.toString());
@@ -36,7 +36,7 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final buffer = StringBuffer();
-    buffer.write('❌ ERROR [${err.response?.statusCode ?? 'N/A'}] !! ${err.requestOptions.uri}');
+    buffer.write('${LogManager.errorTag} [${err.response?.statusCode ?? 'N/A'}] !! ${err.requestOptions.uri}');
     buffer.write('\nMessage: ${err.message}');
     if (err.response?.data != null) {
       buffer.write('\nError Body: ${_prettyJson(err.response?.data)}');

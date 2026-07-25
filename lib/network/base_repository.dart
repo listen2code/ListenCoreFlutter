@@ -30,7 +30,7 @@ mixin BaseRepository {
       if (cachedGetter != null) {
         final cached = await cachedGetter();
         if (cached != null) {
-          appLogger.d('Repository: No connection, returning cached data.');
+          appLogger.d('${LogManager.repositoryTag}: No connection, returning cached data.');
           return Right(cached);
         }
       }
@@ -67,13 +67,13 @@ mixin BaseRepository {
       final errorInfo = innerError is AppException
           ? '${innerError.typeName}: ${innerError.message}'
           : '${e.type}: ${e.message ?? e.error ?? "Unknown network error"}';
-      appLogger.e('Repository API Error [${e.requestOptions.path}]: $errorInfo');
+      appLogger.e('${LogManager.repositoryTag} API Error [${e.requestOptions.path}]: $errorInfo');
       return await _handleFailureFallback(_mapDioException(e), cachedGetter, useCacheCondition);
     } on TypeError catch (e, t) {
-      appLogger.e('Repository Data Type Mismatch: $e \n$t');
+      appLogger.e('${LogManager.repositoryTag} Data Type Mismatch: $e \n$t');
       return const Left(ParseFailure('Unexpected data format from server'));
     } catch (e, t) {
-      appLogger.e('Unexpected Repository Error: $e \n$t');
+      appLogger.e('${LogManager.repositoryTag} Unexpected Error: $e \n$t');
       return Left(UnknownFailure(e.toString()));
     }
   }
@@ -106,7 +106,7 @@ mixin BaseRepository {
       if (shouldTryCache) {
         final cachedData = await getCached();
         if (cachedData != null) {
-          appLogger.d('Repository: Network failed ($failure), falling back to local cache.');
+          appLogger.d('${LogManager.repositoryTag}: Network failed ($failure), falling back to local cache.');
           return Right(cachedData);
         }
       }

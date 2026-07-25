@@ -24,6 +24,13 @@ class LogManager {
   static String mockServerTag = "MockServer";
   static String termTag = "Execution Terminated";
 
+  static const String requestTag = "🌐 REQUEST";
+  static const String responseTag = "✅ RESPONSE";
+  static const String errorTag = "❌ ERROR";
+  static const String authInterceptorTag = "AuthInterceptor";
+  static const String errorInterceptorTag = "ErrorInterceptor";
+  static const String repositoryTag = "Repository";
+
   // Private ValueNotifier to manage state internally
   static final ValueNotifier<List<LogEntry>> _logNotifier = ValueNotifier([]);
 
