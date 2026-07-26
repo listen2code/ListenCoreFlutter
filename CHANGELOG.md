@@ -1,4 +1,8 @@
 
+## 0.0.46
+- **BaseLifecyclePage**: Updated `didUpdateWidget` to check for changes in the `viewModel` instance.
+- **Effect Handling**: Added logic to cancel the existing `_effectSubscription` and re-establish a connection to the new ViewModel's effect stream via `onBindEffect`.
+
 ## 0.0.45
 - **Log Management**:
     - Added static constants to `LogManager` for common network events: `requestTag`, `responseTag`, `errorTag`, `authInterceptorTag`, `errorInterceptorTag`, and `repositoryTag`.

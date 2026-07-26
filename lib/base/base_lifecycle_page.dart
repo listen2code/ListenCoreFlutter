@@ -282,6 +282,19 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
     if (oldWidget.active != widget.active) {
       _evaluateVisibility();
     }
+    // Fix: When the parent widget passes a new ViewModel instance (e.g. after logout and re-login,
+    // where the auto-disposed Riverpod provider is recreated), we must cancel the old effect
+    // subscription and bind to the new instance's effect stream. Otherwise, the UI remains
+    // listening to the disposed ViewModel and fails to receive new effects (e.g., photo options).
+    if (oldWidget.viewModel != widget.viewModel) {
+      _effectSubscription?.cancel();
+      _viewModel = widget.viewModel;
+      if (_viewModel != null) {
+        _effectSubscription = _viewModel!.onBindEffect(_handleEffect);
+      } else {
+        _effectSubscription = null;
+      }
+    }
   }
 
   @override
