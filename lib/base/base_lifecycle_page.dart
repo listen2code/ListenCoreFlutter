@@ -91,7 +91,7 @@ class BaseLifeCyclePage extends StatefulWidget {
     this.useGradientBackground = true,
     this.active = true,
     this.canPop,
-    this.loadingTimeout = const Duration(seconds: 10),
+    this.loadingTimeout = const Duration(seconds: 20),
     this.onInterceptBack,
     this.viewModel,
     this.lifecycle,
@@ -318,7 +318,9 @@ class _BaseLifeCyclePageState extends State<BaseLifeCyclePage> {
         // Use a Stack instead of conditional returning to keep the 'body'
         // widget tree (and its ViewModel state) alive during loading toggles.
         Widget content = Stack(
-          fit: (widget.useScaffold || widget.expandBody) ? StackFit.expand : StackFit.loose, // Ensures full screen for pages/tabs, wrap content for sheets
+          fit: (widget.useScaffold || widget.expandBody)
+              ? StackFit.expand
+              : StackFit.loose, // Ensures full screen for pages/tabs, wrap content for sheets
           children: [
             // Normal content is always present to preserve State/ViewModel continuity.
             widget.body(context, child),
