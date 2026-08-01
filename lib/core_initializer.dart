@@ -107,8 +107,16 @@ class Core {
     _setupGlobalErrorHooks();
 
     // 2. Setup System Information
-    deviceInfo = await DeviceInfoImpl.create();
-    packageInfo = await PackageImpl.create();
+    try {
+      deviceInfo;
+    } catch (_) {
+      deviceInfo = await DeviceInfoImpl.create();
+    }
+    try {
+      packageInfo;
+    } catch (_) {
+      packageInfo = await PackageImpl.create();
+    }
 
     // 3. Setup Storage
     final storagePrefix = config.storagePrefix ?? config.storageConfig?.defaultStoragePrefix;
