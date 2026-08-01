@@ -18,18 +18,12 @@ sealed class Either<L, R> {
 
   /// Maps the [Right] value using the given function, leaving a [Left] untouched.
   Either<L, NewR> map<NewR>(NewR Function(R right) fn) {
-    return fold(
-      (l) => Left<L, NewR>(l),
-      (r) => Right<L, NewR>(fn(r)),
-    );
+    return fold((l) => Left<L, NewR>(l), (r) => Right<L, NewR>(fn(r)));
   }
 
   /// Maps the [Left] value using the given function, leaving a [Right] untouched.
   Either<NewL, R> mapLeft<NewL>(NewL Function(L left) fn) {
-    return fold(
-      (l) => Left<NewL, R>(fn(l)),
-      (r) => Right<NewL, R>(r),
-    );
+    return fold((l) => Left<NewL, R>(fn(l)), (r) => Right<NewL, R>(r));
   }
 
   /// Check if this is a Left instance.
@@ -58,8 +52,7 @@ class Left<L, R> extends Either<L, R> {
   T fold<T>(T Function(L left) left, T Function(R right) right) => left(value);
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is Left<L, R> && other.value == value);
+  bool operator ==(Object other) => identical(this, other) || (other is Left<L, R> && other.value == value);
 
   @override
   int get hashCode => value.hashCode;
@@ -76,8 +69,7 @@ class Right<L, R> extends Either<L, R> {
   T fold<T>(T Function(L left) left, T Function(R right) right) => right(value);
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is Right<L, R> && other.value == value);
+  bool operator ==(Object other) => identical(this, other) || (other is Right<L, R> && other.value == value);
 
   @override
   int get hashCode => value.hashCode;
@@ -102,8 +94,7 @@ class Some<T> extends Option<T> {
   T? toNullable() => value;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is Some<T> && other.value == value);
+  bool operator ==(Object other) => identical(this, other) || (other is Some<T> && other.value == value);
 
   @override
   int get hashCode => value.hashCode;
