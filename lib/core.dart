@@ -48,4 +48,6 @@ export 'apm/frame_monitor.dart';
 export 'apm/perf_trace_store.dart';
 export 'apm/network_inspector_store.dart';
 export 'apm/launch_monitor.dart';
+export 'utils/either.dart';
 export 'services/notification_service.dart';
+

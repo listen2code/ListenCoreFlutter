@@ -1,5 +1,3 @@
-import 'package:fpdart/fpdart.dart';
-
 import '../core.dart';
 
 /// Base interface for all use cases in the application

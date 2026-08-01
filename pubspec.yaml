@@ -1,6 +1,6 @@
 name: listen_core
 description: "Core of Flutter Architecture"
-version: 0.0.47
+version: 0.0.48
 repository: https://github.com/listen2code/ListenCoreFlutter
 
 environment:
@@ -11,7 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
   dio: ^5.9.1
-  fpdart: ^1.1.0
   uuid: ^4.5.3
   riverpod_annotation: ^4.0.0
   connectivity_plus: ^7.0.0

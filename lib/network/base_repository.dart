@@ -1,6 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:fpdart/fpdart.dart';
-
 import '../core.dart';
 
 abstract class CacheDataSource<T> {

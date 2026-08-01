@@ -1,4 +1,8 @@
 
+## 0.0.48
+- **Functional Programming**: Replaced the third-party `fpdart` package with a lightweight, custom implementation of the `Either` (with `Left` and `Right`) and `Option` (with `Some` and `None`) classes, reducing dependencies and package footprints.
+- **BaseViewModel, BaseRepository, BaseUseCase**: Replaced all `fpdart` references with the new custom implementation.
+
 ## 0.0.47
 - **UI Configuration**: Introduced `CoreUiConfig` to allow custom default texts/strings (like `apiErrorTitle`, `loadingDefaultMessage`, `okText`, `cancelText`) to be configured from outside during `Core` initialization.
 - **BaseViewModel**: Refactored `handleFailure` API error dialog title to read dynamically from `Core.uiConfig.apiErrorTitle.tr` instead of a hardcoded string.
