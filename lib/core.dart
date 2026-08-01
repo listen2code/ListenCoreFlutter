@@ -12,6 +12,7 @@ export 'config/mock_server_config.dart';
 export 'config/network_config.dart';
 export 'config/response_config.dart';
 export 'config/storage_config.dart';
+export 'config/ui_config.dart';
 export 'core_initializer.dart';
 export 'env/app_env.dart';
 export 'errors/exceptions.dart';

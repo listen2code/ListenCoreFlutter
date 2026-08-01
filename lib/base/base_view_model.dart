@@ -628,7 +628,7 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     if (mappedFailure is AuthFailure) {
       emitEffect(LogoutEffect(message: mappedFailure.message));
     } else if (mappedFailure is ServerApiFailure) {
-      emitEffect(MessageEffect.dialog(mappedFailure.message, title: "API Error"));
+      emitEffect(MessageEffect.dialog(mappedFailure.message, title: Core.uiConfig.apiErrorTitle.tr));
     } else {
       emitEffect(MessageEffect.error(mappedFailure.message));
     }

@@ -49,6 +49,9 @@ class CoreConfig {
   // Storage
   final StorageConfig? storageConfig;
 
+  // UI Strings/Default Texts
+  final CoreUiConfig? uiConfig;
+
   const CoreConfig({
     this.storagePrefix,
     this.onEventFired,
@@ -69,6 +72,7 @@ class CoreConfig {
     this.mockServerConfig,
     this.logConfig,
     this.storageConfig,
+    this.uiConfig,
   });
 
   /// Creates a default configuration with sensible defaults
@@ -79,6 +83,7 @@ class CoreConfig {
       mockServerConfig: const MockServerConfig(),
       logConfig: const LogConfig(),
       storageConfig: const StorageConfig(),
+      uiConfig: const CoreUiConfig(),
     );
   }
 }
@@ -89,6 +94,7 @@ class Core {
 
   static late final IDeviceInfo deviceInfo;
   static late final IPackageInfo packageInfo;
+  static late final CoreUiConfig uiConfig;
 
   static NetworkInfo? _networkInfo;
 
@@ -103,6 +109,9 @@ class Core {
 
   /// Initializes all core utilities in the correct order.
   static Future<void> init(CoreConfig config) async {
+    // 0. Setup UI Config
+    uiConfig = config.uiConfig ?? const CoreUiConfig();
+
     // 1. Setup Error Handlers (Infrastructure level)
     _setupGlobalErrorHooks();
 

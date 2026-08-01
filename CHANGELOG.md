@@ -1,4 +1,8 @@
 
+## 0.0.47
+- **UI Configuration**: Introduced `CoreUiConfig` to allow custom default texts/strings (like `apiErrorTitle`, `loadingDefaultMessage`, `okText`, `cancelText`) to be configured from outside during `Core` initialization.
+- **BaseViewModel**: Refactored `handleFailure` API error dialog title to read dynamically from `Core.uiConfig.apiErrorTitle.tr` instead of a hardcoded string.
+
 ## 0.0.46
 - **BaseLifecyclePage**: Updated `didUpdateWidget` to check for changes in the `viewModel` instance.
 - **Effect Handling**: Added logic to cancel the existing `_effectSubscription` and re-establish a connection to the new ViewModel's effect stream via `onBindEffect`.
