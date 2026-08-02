@@ -410,11 +410,21 @@ class _RouteAwareProxy extends RouteAware {
 
   @override
   /// Called when the top route has been popped off, and the current route shows up.
-  void didPopNext() => onVisible();
+  void didPopNext() {
+    final lastRoute = AppNav.lastTransitionRoute;
+    if (lastRoute == null || lastRoute is PageRoute) {
+      onVisible();
+    }
+  }
 
   @override
   /// Called when a new route has been pushed, and the current route is no longer visible.
-  void didPushNext() => onInVisible();
+  void didPushNext() {
+    final lastRoute = AppNav.lastTransitionRoute;
+    if (lastRoute == null || lastRoute is PageRoute) {
+      onInVisible();
+    }
+  }
 
   @override
   /// Called when the current route has been popped off (permanently exiting).

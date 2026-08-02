@@ -73,24 +73,36 @@ class AppNav {
     _argumentConverters[T] = converter;
   }
 
-  /// Global snapshot of the currently active route's arguments.
-  static Object? _currentArgs;
+  /// Global snapshot of the currently active route.
+  static Route<dynamic>? _currentRoute;
 
-  static String? _currentRouteName;
-  static String? get currentRouteName => _currentRouteName;
-  static Object? get currentArgs => _currentArgs;
+  /// Tracks the route that was most recently pushed or popped during transition.
+  static Route<dynamic>? lastTransitionRoute;
+  static Route<dynamic>? get currentRoute => _currentRoute;
+
+  /// Global snapshot of the currently active route's name and arguments.
+  static String? get currentRouteName => _currentRoute?.settings.name;
+  static Object? get currentArgs => _currentRoute?.settings.arguments;
 
   /// Notifier to listen to route changes (push, pop, or replace).
   static final ValueNotifier<String?> routeChangeNotifier = ValueNotifier(null);
 
   @visibleForTesting
   static set currentRouteName(String? routeName) {
-    _currentRouteName = routeName;
+    _currentRoute = PageRouteBuilder(
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      settings: RouteSettings(name: routeName, arguments: currentArgs),
+    );
     routeChangeNotifier.value = routeName;
   }
 
   @visibleForTesting
-  static set currentArgs(Object? args) => _currentArgs = args;
+  static set currentArgs(Object? args) {
+    _currentRoute = PageRouteBuilder(
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      settings: RouteSettings(name: currentRouteName, arguments: args),
+    );
+  }
 
   /// Combined observer for both Lifecycle tracking and Argument syncing.
   static final RouteObserver<ModalRoute<void>> observer = _AppNavObserver();
@@ -104,8 +116,8 @@ class AppNav {
   /// Retrieves a parameter from the current global route state.
   /// Safely usable within initState as it doesn't require BuildContext.
   static T? getParam<T>(String key) {
-    if (_currentArgs is Map) {
-      final val = (_currentArgs as Map)[key];
+    if (currentArgs is Map) {
+      final val = (currentArgs as Map)[key];
       if (val is T) return val;
       // Handle string to bool conversion from query params
       if (T == bool && val is String) {
@@ -119,11 +131,11 @@ class AppNav {
   /// Retrieves the entire arguments object from the current global route state.
   /// Seamlessly fallback-decodes Map of query params from Deep Links to type-safe classes using registered converters.
   static T? getArgs<T>() {
-    if (_currentArgs is T) {
-      return _currentArgs as T;
+    if (currentArgs is T) {
+      return currentArgs as T;
     }
-    if (_currentArgs is Map) {
-      final map = Map<String, dynamic>.from(_currentArgs as Map);
+    if (currentArgs is Map) {
+      final map = Map<String, dynamic>.from(currentArgs as Map);
       final converter = _argumentConverters[T];
       if (converter != null) {
         return converter(map) as T?;
@@ -160,44 +172,42 @@ class AppNav {
       }
     }
 
-    _runInterceptors(
-      routeName: targetRouteName,
-      arguments: arguments,
-      needLogin: needLogin,
-    ).then((shouldProceed) {
-      if (!shouldProceed) {
-        completer.complete(null);
-        return;
-      }
+    _runInterceptors(routeName: targetRouteName, arguments: arguments, needLogin: needLogin)
+        .then((shouldProceed) {
+          if (!shouldProceed) {
+            completer.complete(null);
+            return;
+          }
 
-      final Route<T>? route = _resolveRoute<T>(target, arguments);
-      if (route == null) {
-        completer.complete(null);
-        return;
-      }
+          final Route<T>? route = _resolveRoute<T>(target, arguments);
+          if (route == null) {
+            completer.complete(null);
+            return;
+          }
 
-      // Check if the target route is already the currently active route.
-      // If so, we can either perform a pushReplacement or directly return based on the replaceIfExists flag.
-      final isAlreadyOnTarget = targetRouteName != null && _currentRouteName == targetRouteName;
+          // Check if the target route is already the currently active route.
+          // If so, we can either perform a pushReplacement or directly return based on the replaceIfExists flag.
+          final isAlreadyOnTarget = targetRouteName != null && currentRouteName == targetRouteName;
 
-      if (isAlreadyOnTarget) {
-        if (replaceIfExists) {
-          AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
-            completer.complete(value);
-          });
-        } else {
-          appLogger.i('AppNav: Target route $targetRouteName is already current. Ignoring navigation.');
+          if (isAlreadyOnTarget) {
+            if (replaceIfExists) {
+              AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
+                completer.complete(value);
+              });
+            } else {
+              appLogger.i('AppNav: Target route $targetRouteName is already current. Ignoring navigation.');
+              completer.complete(null);
+            }
+          } else {
+            AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
+              completer.complete(value);
+            });
+          }
+        })
+        .catchError((e) {
+          appLogger.e('AppNav: Error running interceptors in to(): $e');
           completer.complete(null);
-        }
-      } else {
-        AppNavConfig.navigatorKey.currentState?.push(route).then((value) {
-          completer.complete(value);
         });
-      }
-    }).catchError((e) {
-      appLogger.e('AppNav: Error running interceptors in to(): $e');
-      completer.complete(null);
-    });
 
     return completer.future;
   }
@@ -217,28 +227,26 @@ class AppNav {
       }
     }
 
-    _runInterceptors(
-      routeName: targetRouteName,
-      arguments: arguments,
-      needLogin: needLogin,
-    ).then((shouldProceed) {
-      if (!shouldProceed) {
-        completer.complete(null);
-        return;
-      }
+    _runInterceptors(routeName: targetRouteName, arguments: arguments, needLogin: needLogin)
+        .then((shouldProceed) {
+          if (!shouldProceed) {
+            completer.complete(null);
+            return;
+          }
 
-      final Route<T>? route = _resolveRoute<T>(target, arguments);
-      if (route == null) {
-        completer.complete(null);
-        return;
-      }
-      AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
-        completer.complete(value);
-      });
-    }).catchError((e) {
-      appLogger.e('AppNav: Error running interceptors in off(): $e');
-      completer.complete(null);
-    });
+          final Route<T>? route = _resolveRoute<T>(target, arguments);
+          if (route == null) {
+            completer.complete(null);
+            return;
+          }
+          AppNavConfig.navigatorKey.currentState?.pushReplacement(route).then((value) {
+            completer.complete(value);
+          });
+        })
+        .catchError((e) {
+          appLogger.e('AppNav: Error running interceptors in off(): $e');
+          completer.complete(null);
+        });
 
     return completer.future;
   }
@@ -266,39 +274,37 @@ class AppNav {
       }
     }
 
-    _runInterceptors(
-      routeName: targetRouteName,
-      arguments: arguments,
-      needLogin: needLogin,
-    ).then((shouldProceed) {
-      if (!shouldProceed) {
-        completer.complete(null);
-        return;
-      }
+    _runInterceptors(routeName: targetRouteName, arguments: arguments, needLogin: needLogin)
+        .then((shouldProceed) {
+          if (!shouldProceed) {
+            completer.complete(null);
+            return;
+          }
 
-      if (isReplace) {
-        // Create new route and replace entire stack
-        final Route<T>? route = _resolveRoute<T>(target, arguments);
-        if (route == null) {
+          if (isReplace) {
+            // Create new route and replace entire stack
+            final Route<T>? route = _resolveRoute<T>(target, arguments);
+            if (route == null) {
+              completer.complete(null);
+              return;
+            }
+            AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
+              completer.complete(value);
+            });
+          } else {
+            // Pop until target route (must be a String route name)
+            if (target is String) {
+              AppNavConfig.navigatorKey.currentState?.popUntil((route) {
+                return route.settings.name == target;
+              });
+            }
+            completer.complete(null);
+          }
+        })
+        .catchError((e) {
+          appLogger.e('AppNav: Error running interceptors in offAll(): $e');
           completer.complete(null);
-          return;
-        }
-        AppNavConfig.navigatorKey.currentState?.pushAndRemoveUntil(route, (route) => false).then((value) {
-          completer.complete(value);
         });
-      } else {
-        // Pop until target route (must be a String route name)
-        if (target is String) {
-          AppNavConfig.navigatorKey.currentState?.popUntil((route) {
-            return route.settings.name == target;
-          });
-        }
-        completer.complete(null);
-      }
-    }).catchError((e) {
-      appLogger.e('AppNav: Error running interceptors in offAll(): $e');
-      completer.complete(null);
-    });
 
     return completer.future;
   }
@@ -387,48 +393,50 @@ class AppNav {
   }
 
   static void tryLogin({required VoidCallback onSuccess, VoidCallback? onFail, bool needLogin = true}) {
-    _runInterceptors(
-      routeName: null,
-      arguments: null,
-      needLogin: needLogin,
-    ).then((shouldProceed) {
-      if (shouldProceed) {
-        onSuccess();
-      } else {
-        onFail?.call();
-      }
-    }).catchError((e) {
-      appLogger.e('AppNav: Error in tryLogin interceptor execution: $e');
-      onFail?.call();
-    });
+    _runInterceptors(routeName: null, arguments: null, needLogin: needLogin)
+        .then((shouldProceed) {
+          if (shouldProceed) {
+            onSuccess();
+          } else {
+            onFail?.call();
+          }
+        })
+        .catchError((e) {
+          appLogger.e('AppNav: Error in tryLogin interceptor execution: $e');
+          onFail?.call();
+        });
   }
 }
 
 /// Internal observer inheriting from RouteObserver to support both arguments syncing and RouteAware lifecycle.
 class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
-  void _updateRoute(String? routeName, Object? arguments) {
-    AppNav._currentArgs = arguments;
-    AppNav._currentRouteName = routeName;
-    AppNav.routeChangeNotifier.value = routeName;
+  void _updateRoute(Route<dynamic>? route) {
+    AppNav._currentRoute = route;
+    AppNav.routeChangeNotifier.value = route?.settings.name;
   }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    AppNav.lastTransitionRoute = route;
     super.didPush(route, previousRoute);
-    _updateRoute(route.settings.name, route.settings.arguments);
+    _updateRoute(route);
     AppNav.onRoutePushed?.call(route, previousRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    AppNav.lastTransitionRoute = route;
     super.didPop(route, previousRoute);
-    _updateRoute(previousRoute?.settings.name, previousRoute?.settings.arguments);
+    _updateRoute(previousRoute);
     AppNav.onRoutePopped?.call(route, previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute != null) {
+      AppNav.lastTransitionRoute = newRoute;
+    }
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-    _updateRoute(newRoute?.settings.name, newRoute?.settings.arguments);
+    _updateRoute(newRoute);
   }
 }
