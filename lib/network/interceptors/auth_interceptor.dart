@@ -12,12 +12,16 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // Check if the request explicitly disables authentication.
     final bool noAuth = options.extra[ApiClient.kNoAuthKey] == true;
     final networkConfig = ApiClient.networkConfig;
-    if (!noAuth && networkConfig != null && !networkConfig.visitorPaths.contains(options.path)) {
+    final bool isVisitorPath = networkConfig != null && networkConfig.visitorPaths.contains(options.path);
+
+    if (!noAuth && !isVisitorPath) {
       await ApiClient.delegate.onInjectAuthHeader(options);
     }
+
+    ApiClient.delegate.onInjectCommonHeaders(options);
+
     handler.next(options);
   }
 
@@ -44,9 +48,7 @@ class AuthInterceptor extends Interceptor {
 
             final options = err.requestOptions.copyWith();
             options.extra[_kIsRefreshedKey] = true;
-            appLogger.i(
-              '$_tag: [REFRESH] -> Success. Retrying original request: ${err.requestOptions.uri}',
-            );
+            appLogger.i('$_tag: [REFRESH] -> Success. Retrying original request: ${err.requestOptions.uri}');
 
             try {
               final response = await ApiClient.dio.fetch(options);

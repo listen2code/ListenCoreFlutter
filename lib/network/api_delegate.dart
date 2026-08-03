@@ -31,6 +31,9 @@ abstract class IApiInterceptorDelegate {
   /// Injects authentication headers into the request.
   Future<void> onInjectAuthHeader(RequestOptions options);
 
+  /// Injects common headers (such as Accept-Language) into all requests.
+  void onInjectCommonHeaders(RequestOptions options);
+
   /// Injects tracing identifiers into the request headers.
   void onInjectTraceHeader(RequestOptions options, String traceId);
 
@@ -42,6 +45,11 @@ abstract class IApiInterceptorDelegate {
 class DefaultApiDelegate implements IApiInterceptorDelegate {
   @override
   Future<void> onInjectAuthHeader(RequestOptions options) async {
+    // Default implementation does nothing
+  }
+
+  @override
+  void onInjectCommonHeaders(RequestOptions options) {
     // Default implementation does nothing
   }
 
