@@ -1,4 +1,9 @@
 
+## 0.0.49
+- **Network Interceptors & Architecture**:
+    - Introduced `onInjectCommonHeaders(RequestOptions options)` in `IApiInterceptorDelegate` interface and `DefaultApiDelegate` for injecting universal request headers (e.g., `Accept-Language`).
+    - Refactored `AuthInterceptor.onRequest` to decouple `onInjectAuthHeader` (conditionally called for protected endpoints) from `onInjectCommonHeaders` (unconditionally called for all endpoints, including public/visitor paths like `/v1/projects`).
+
 ## 0.0.48
 - **Functional Programming**: Replaced the third-party `fpdart` package with a lightweight, custom implementation of the `Either` (with `Left` and `Right`) and `Option` (with `Some` and `None`) classes, reducing dependencies and package footprints.
 - **BaseViewModel, BaseRepository, BaseUseCase**: Replaced all `fpdart` references with the new custom implementation.
