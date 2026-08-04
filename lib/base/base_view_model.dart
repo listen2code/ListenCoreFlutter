@@ -158,12 +158,46 @@ abstract class BaseViewModel<I> implements PageLifecycle {
 /// - [BaseState] for state objects
 /// - [BaseIntent] for intent objects
 mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseViewModel<I>, IStateOwner<S> {
-  /// Gets the current state.
-  ///
-  /// This getter must be implemented by the class using this mixin.
-  /// It provides access to the current state object.
+  S? _lastKnownState;
+
+  /// Returns true if the underlying Riverpod provider/notifier is still active (mounted) and not disposed.
+  bool get isMounted {
+    try {
+      final dynamicSelf = this as dynamic;
+      final providerRef = dynamicSelf.ref;
+      if (providerRef != null) {
+        return providerRef.mounted == true;
+      }
+    } catch (_) {}
+    return true;
+  }
+
   @override
-  S get state;
+  S get state {
+    // If the widget/provider has already been disposed/unmounted, return the last known
+    // state to prevent Riverpod's "Cannot use Ref after it has been disposed" crash.
+    if (!isMounted && _lastKnownState != null) {
+      return _lastKnownState!;
+    }
+    try {
+      final dynamicSelf = this as dynamic;
+      final providerRef = dynamicSelf.ref;
+      if (providerRef != null) {
+        // Rather than reading "super.state" which can trigger self-dependency errors (a provider
+        // cannot depend on itself), or crash if ref is disposed, we dynamically extract the element,
+        // read the provider state directly from the container's cache, and update our cached state.
+        final element = providerRef.element;
+        final s = element.container.read(element.provider) as S;
+        _lastKnownState = s;
+        return s;
+      }
+    } catch (_) {}
+    // Fallback to the last known state if reading fails (e.g. during disposal cycle)
+    if (_lastKnownState != null) {
+      return _lastKnownState!;
+    }
+    throw StateError('ViewModelMixin: state accessed before initialization or after disposal without cached state.');
+  }
 
   /// Sets the current state.
   ///

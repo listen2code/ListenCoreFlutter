@@ -1,4 +1,10 @@
 
+## 0.0.50
+- **Lifecycle Management**: Added an `isMounted` getter that safely checks the mounting status of the Riverpod provider using dynamic reference access.
+- **State Caching**: Introduced a private `_lastKnownState` field to persist the most recent state value.
+- **Resilient State Access**: Updated the `state` getter to attempt reading from the provider container while mounted and fallback to the cached `_lastKnownState` if the provider is disposed.
+- **Error Handling**: Added a specific `StateError` for scenarios where the state is accessed before initialization or after disposal without a valid cache.
+
 ## 0.0.49
 - **Network Interceptors & Architecture**:
     - Introduced `onInjectCommonHeaders(RequestOptions options)` in `IApiInterceptorDelegate` interface and `DefaultApiDelegate` for injecting universal request headers (e.g., `Accept-Language`).
