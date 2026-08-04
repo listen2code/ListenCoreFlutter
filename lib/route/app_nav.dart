@@ -90,7 +90,7 @@ class AppNav {
   @visibleForTesting
   static set currentRouteName(String? routeName) {
     _currentRoute = PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
       settings: RouteSettings(name: routeName, arguments: currentArgs),
     );
     routeChangeNotifier.value = routeName;
@@ -99,7 +99,7 @@ class AppNav {
   @visibleForTesting
   static set currentArgs(Object? args) {
     _currentRoute = PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
       settings: RouteSettings(name: currentRouteName, arguments: args),
     );
   }
