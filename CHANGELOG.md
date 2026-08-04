@@ -1,4 +1,9 @@
 
+## 0.0.51
+- **Local Mock Server**:
+    - Enhanced `LocalMockServer._handleRequest` to inspect the incoming `accept-language` HTTP header.
+    - Implemented automatic priority routing for localized JSON mock files (e.g. `_zh.json`, `_ja.json`) with graceful fallback to standard files.
+
 ## 0.0.50
 - **Lifecycle Management**: Added an `isMounted` getter that safely checks the mounting status of the Riverpod provider using dynamic reference access.
 - **State Caching**: Introduced a private `_lastKnownState` field to persist the most recent state value.

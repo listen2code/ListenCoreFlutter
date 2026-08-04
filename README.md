@@ -75,7 +75,7 @@ lib/
 
 - `ApiClient` provides a multi-interceptor Dio setup with trace propagation, auth injection, refresh retry queueing, and error mapping.
 - `BaseRepository.safeCall()` standardizes repository error handling with `Either<Failure, T>`.
-- `LocalMockServer` serves local mock assets for offline/mobile debug scenarios.
+- `LocalMockServer` serves local mock assets with `Accept-Language` header parsing for localized mock file auto-routing (`_zh.json`, `_ja.json`).
 
 ### 3. Runtime infrastructure
 
@@ -287,7 +287,7 @@ lib/
 
 - `ApiClient` 提供多层 Dio 拦截器：trace 传播、认证注入、refresh 重试队列、错误映射。
 - `BaseRepository.safeCall()` 用 `Either<Failure, T>` 收敛仓储层错误处理。
-- `LocalMockServer` 支持离线 / 调试场景下的本地 mock 资源服务。
+- `LocalMockServer` 支持离线 / 调试场景下的本地 mock 资源服务，并支持解析 `Accept-Language` 头自动匹配多语言 JSON 资产（如 `_zh.json`、`_ja.json`）。
 
 ### 3. 运行时基础设施
 
@@ -499,7 +499,7 @@ lib/
 
 - `ApiClient` は trace 伝播、認証注入、refresh retry queue、エラー変換を含む多段 Dio インターセプターを提供します。
 - `BaseRepository.safeCall()` は `Either<Failure, T>` で Repository 層のエラー処理を標準化します。
-- `LocalMockServer` はオフライン / デバッグ用途のローカル mock 配信を支えます。
+- `LocalMockServer` は `Accept-Language` ヘッダー解析による言語別 mock ファイル（`_zh.json`、`_ja.json`）の自動ルーティングとローカル配信を支えます。
 
 ### 3. 実行時基盤
 
