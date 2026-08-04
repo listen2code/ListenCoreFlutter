@@ -180,12 +180,29 @@ class LocalMockServer {
       pathParts.removeAt(0);
     }
 
+    // Read and parse accept-language to support localized mock files
+    final acceptLang = request.headers.value('accept-language')?.split(',').first.trim().toLowerCase() ?? '';
+    String langSuffix = '';
+    if (acceptLang.startsWith('zh')) {
+      langSuffix = 'zh';
+    } else if (acceptLang.startsWith('ja')) {
+      langSuffix = 'ja';
+    }
+
     // 5. Build candidate asset paths matching api.js rules
     List<String> candidatePaths = [];
     if (pathParts.length > 1) {
-      candidatePaths.add(_buildPath(versionDir, method, [pathParts[0]]));
+      final baseSingle = _buildPath(versionDir, method, [pathParts[0]]);
+      if (langSuffix.isNotEmpty) {
+        candidatePaths.add(baseSingle.replaceFirst('.json', '_$langSuffix.json'));
+      }
+      candidatePaths.add(baseSingle);
     }
-    candidatePaths.add(_buildPath(versionDir, method, pathParts));
+    final baseAll = _buildPath(versionDir, method, pathParts);
+    if (langSuffix.isNotEmpty) {
+      candidatePaths.add(baseAll.replaceFirst('.json', '_$langSuffix.json'));
+    }
+    candidatePaths.add(baseAll);
 
     String? jsonData;
     String? matchedPath;
