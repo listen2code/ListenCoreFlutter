@@ -44,6 +44,11 @@ abstract class IApiInterceptorDelegate {
 /// A default, no-op implementation of the delegate to prevent null pointer issues.
 class DefaultApiDelegate implements IApiInterceptorDelegate {
   @override
+  Future<bool> onRefreshToken() async {
+    return false;
+  }
+
+  @override
   Future<void> onInjectAuthHeader(RequestOptions options) async {
     // Default implementation does nothing
   }
@@ -56,10 +61,5 @@ class DefaultApiDelegate implements IApiInterceptorDelegate {
   @override
   void onInjectTraceHeader(RequestOptions options, String traceId) {
     options.headers['X-Trace-Id'] = traceId;
-  }
-
-  @override
-  Future<bool> onRefreshToken() async {
-    return false;
   }
 }
