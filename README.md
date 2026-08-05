@@ -54,12 +54,14 @@ This README prioritizes:
 ```dart
 lib/
 ├── base/           # ViewModel, lifecycle pages, base app wrappers
+├── apm/            # FrameMonitor, RingBuffer, PerfTraceStore, NetworkInspectorStore, LaunchMonitor
 ├── config/         # Network / log / storage / mock server configuration
 ├── env/            # Environment registration and switching
 ├── errors/         # Exceptions and failures
 ├── i18n/           # Translation registry
 ├── network/        # ApiClient, repository helpers, response model, use case
-├── route/          # Navigation primitives and interceptors
+├── route/          # Navigation primitives, interceptors, deep link manager
+├── services/       # NotificationService
 └── utils/          # Logging, crash protection, storage, event bus, validators
 ```
 
@@ -113,14 +115,14 @@ lib/
 Add `listen_core` to your `pubspec.yaml`:
 
 ```bash
-dart pub add listen_core:0.0.4
+dart pub add listen_core:0.0.51
 ```
 
 Or add it manually:
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.4
+  listen_core: ^0.0.51
 ```
 
 **🔗 [View on pub.dev](https://pub.dev/packages/listen_core)**
@@ -266,12 +268,14 @@ ListenCore 是从 `ListenPortfolioFlutter` 抽离出的可复用基础设施层�
 ```dart
 lib/
 ├── base/           # ViewModel、生命周期页面、基础应用包装
+├── apm/            # FrameMonitor、RingBuffer、PerfTraceStore、NetworkInspectorStore、LaunchMonitor
 ├── config/         # 网络 / 日志 / 存储 / MockServer 配置
 ├── env/            # 环境注册与切换
 ├── errors/         # Exceptions 与 Failures
 ├── i18n/           # 翻译注册
 ├── network/        # ApiClient、Repository 辅助、响应模型、UseCase
-├── route/          # 导航原语与拦截器
+├── route/          # 导航原语、拦截器、Deep Link 管理
+├── services/       # NotificationService
 └── utils/          # 日志、崩溃保护、存储、event bus、validator
 ```
 
@@ -325,14 +329,14 @@ lib/
 将 `listen_core` 添加到您的 `pubspec.yaml`：
 
 ```bash
-dart pub add listen_core:0.0.4
+dart pub add listen_core:0.0.51
 ```
 
 或手动添加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.4
+  listen_core: ^0.0.51
 ```
 
 **🔗 [在 pub.dev 上查看](https://pub.dev/packages/listen_core)**
@@ -478,12 +482,14 @@ ListenCore は `ListenPortfolioFlutter` の背後にある再利用可能な基�
 ```dart
 lib/
 ├── base/           # ViewModel、ライフサイクルページ、ベースアプリラッパー
+├── apm/            # FrameMonitor、RingBuffer、PerfTraceStore、NetworkInspectorStore、LaunchMonitor
 ├── config/         # ネットワーク / ログ / ストレージ / MockServer 設定
 ├── env/            # 環境登録と切り替え
 ├── errors/         # Exceptions と Failures
 ├── i18n/           # 翻訳登録
 ├── network/        # ApiClient、Repository 辅助、レスポンスモデル、UseCase
-├── route/          # ナビゲーション原語とインターセプター
+├── route/          # ナビゲーション原語、インターセプター、Deep Link マネージャー
+├── services/       # NotificationService
 └── utils/          # ログ、クラッシュ保護、ストレージ、event bus、validator
 ```
 
@@ -537,14 +543,14 @@ lib/
 `listen_core` を `pubspec.yaml` に追加：
 
 ```bash
-dart pub add listen_core:0.0.4
+dart pub add listen_core:0.0.51
 ```
 
 または手動で追加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.4
+  listen_core: ^0.0.51
 ```
 
 **🔗 [pub.dev で見る](https://pub.dev/packages/listen_core)**
