@@ -50,8 +50,10 @@ class AppEnv {
   /// Initializes the application environments.
   /// [configs] A list of configurations, each describing its own [AppEnvironment].
   static Future<void> init(List<BaseEnvConfig> configs) async {
+    // If already initialized (e.g. during test re-entry), refresh configs and return early without throwing
     if (_configs != null) {
-      throw Exception("AppEnv has already been initialized.");
+      _configs = {for (var config in configs) config.env: config};
+      return;
     }
 
     _configs = {for (var config in configs) config.env: config};

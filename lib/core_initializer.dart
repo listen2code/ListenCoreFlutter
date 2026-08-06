@@ -109,13 +109,18 @@ class Core {
 
   /// Initializes all core utilities in the correct order.
   static Future<void> init(CoreConfig config) async {
-    // 0. Setup UI Config
-    uiConfig = config.uiConfig ?? const CoreUiConfig();
+    // 0. Setup UI Config (Guard against LateInitializationError on test re-entry)
+    try {
+      // Check if uiConfig has already been initialized to prevent LateInitializationError on repeated Core.init calls
+      uiConfig;
+    } catch (_) {
+      uiConfig = config.uiConfig ?? const CoreUiConfig();
+    }
 
     // 1. Setup Error Handlers (Infrastructure level)
     _setupGlobalErrorHooks();
 
-    // 2. Setup System Information
+    // 2. Setup System Information (Guard against LateInitializationError on test re-entry)
     try {
       deviceInfo;
     } catch (_) {
