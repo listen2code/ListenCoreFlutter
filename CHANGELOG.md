@@ -1,4 +1,12 @@
 
+## 0.0.52
+- **APM Monitoring**: Updated `FrameMonitor` to safely check for test environments by guarding `Platform.environment` access with a `kIsWeb` check, preventing crashes on web platforms.
+- **Device Information**:
+    - Implemented `WebDeviceInfoImpl` to handle browser-specific metadata (vendor, browser name, and version).
+    - Introduced `FallbackDeviceInfoImpl` to provide default "unknown" values for unsupported platforms, replacing the previous behavior of throwing an `UnsupportedError`.
+    - Enhanced `DeviceInfoImpl` with explicit type casting and updated the `platform` getter to correctly identify "web".
+- **Factory Logic**: Updated `IDeviceInfo.create()` to detect web environments and return the appropriate implementation.
+
 ## 0.0.51
 - **Local Mock Server**:
     - Enhanced `LocalMockServer._handleRequest` to inspect the incoming `accept-language` HTTP header.

@@ -182,7 +182,7 @@ class FrameMonitor {
       // In Debug Mode, Dart VM and assertion checks multiply render overhead by 3-4x.
       // We scale the baseline budget line for normal/isolated check to avoid debug-only false-positive metrics,
       // while preserving strict hardware budgets for unit tests in testing environment.
-      final bool isRunningInTest = Platform.environment.containsKey('FLUTTER_TEST');
+      final bool isRunningInTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
 
       if (_lastVsyncStart != null) {
         final intervalUs = currentVsyncStart - _lastVsyncStart!.inMicroseconds;
