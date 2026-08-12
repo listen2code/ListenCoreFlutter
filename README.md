@@ -96,7 +96,7 @@ lib/
 - Web / Desktop support is incomplete.
 - `LocalMockServer` depends on `dart:io`, so it is not Web-compatible.
 - Route parameters are not fully type-safe.
-- `CacheManager` is currently a cache cleanup utility, not a full data caching framework.
+- `DiskCleanupUtil` is a cache cleanup utility, not a full data caching framework.
 - Test coverage is still far from where a mature reusable framework should be.
 
 ## Target State
@@ -115,14 +115,14 @@ lib/
 Add `listen_core` to your `pubspec.yaml`:
 
 ```bash
-dart pub add listen_core:0.0.51
+dart pub add listen_core:0.0.52
 ```
 
 Or add it manually:
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.51
+  listen_core: ^0.0.52
 ```
 
 **🔗 [View on pub.dev](https://pub.dev/packages/listen_core)**
@@ -310,7 +310,7 @@ lib/
 - Web / Desktop 支持仍不完整。
 - `LocalMockServer` 依赖 `dart:io`，因此不支持 Web。
 - 路由参数还不是完全类型安全。
-- `CacheManager` 当前更接近缓存清理工具，而不是完整的数据缓存框架。
+- `DiskCleanupUtil` 当前是缓存清理工具，而不是完整的数据缓存框架。
 - 测试覆盖距离成熟可复用框架仍有明显差距。
 
 ## 🔮 目标态
@@ -329,14 +329,14 @@ lib/
 将 `listen_core` 添加到您的 `pubspec.yaml`：
 
 ```bash
-dart pub add listen_core:0.0.51
+dart pub add listen_core:0.0.52
 ```
 
 或手动添加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.51
+  listen_core: ^0.0.52
 ```
 
 **🔗 [在 pub.dev 上查看](https://pub.dev/packages/listen_core)**
@@ -524,7 +524,7 @@ lib/
 - Web / Desktop サポートはまだ不完全です。
 - `LocalMockServer` は `dart:io` 依存のため Web 非対応です。
 - ルート引数はまだ完全な型安全ではありません。
-- `CacheManager` は現在、完全なデータキャッシュ基盤というよりキャッシュ削除ユーティリティに近いです。
+- `DiskCleanupUtil` はキャッシュ削除ユーティリティであり、完全なデータキャッシュ基盤ではありません。
 - テストカバレッジは成熟した再利用フレームワーク水準にはまだ届いていません。
 
 ## 🔮 目標状態
@@ -543,14 +543,14 @@ lib/
 `listen_core` を `pubspec.yaml` に追加：
 
 ```bash
-dart pub add listen_core:0.0.51
+dart pub add listen_core:0.0.52
 ```
 
 または手動で追加：
 
 ```yaml
 dependencies:
-  listen_core: ^0.0.51
+  listen_core: ^0.0.52
 ```
 
 **🔗 [pub.dev で見る](https://pub.dev/packages/listen_core)**
@@ -670,10 +670,10 @@ LogManager.logNotifier.addListener(() {
 
 ```dart
 // キャッシュサイズを取得
-final cacheSize = await CacheManager.getCacheSize();
+final cacheSize = await DiskCleanupUtil.getCacheSize();
 
 // 全キャッシュをクリア
-await CacheManager.clearAllCache();
+await DiskCleanupUtil.clearAllCache();
 ```
 
 ### 7. SharedPreferences ユーティリティ
