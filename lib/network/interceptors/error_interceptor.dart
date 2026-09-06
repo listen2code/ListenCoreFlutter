@@ -16,13 +16,34 @@ class ErrorInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
         final data = err.response?.data;
-        var message = data?[BaseResponseModel.messageKey]?.toString();
-        final messageId = data?[BaseResponseModel.messageIdKey]?.toString();
+        String? message;
+        String? messageId;
+
+        if (data is Map) {
+          message = data[BaseResponseModel.messageKey]?.toString();
+          messageId = data[BaseResponseModel.messageIdKey]?.toString();
+        } else if (data is String) {
+          final trimmed = data.trim();
+          if (trimmed.startsWith('<')) {
+            // Extract <title> if HTML error page (e.g., Nginx 413, 502, 504)
+            final titleMatch = RegExp(r'<title>(.*?)</title>', caseSensitive: false).firstMatch(trimmed);
+            if (titleMatch != null && titleMatch.group(1) != null) {
+              message = titleMatch.group(1)!.trim();
+            }
+          } else if (trimmed.isNotEmpty) {
+            message = trimmed;
+          }
+        }
+
         if (message.isNullOrBlank) {
           message = err.message;
         }
         if (message.isNullOrBlank) {
-          message = 'HTTP bad response';
+          if (statusCode != null) {
+            message = 'HTTP $statusCode error';
+          } else {
+            message = 'HTTP bad response';
+          }
         }
         if (statusCode == HttpCode.unauthorized || statusCode == HttpCode.forbidden) {
           exception = AuthException(message!, messageId, statusCode);
