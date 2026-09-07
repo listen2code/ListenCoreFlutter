@@ -1,4 +1,9 @@
 
+## 0.0.53
+- **Storage Resilience**: Enhanced `SecureStorageUtil` with try-catch and multi-tier graceful fallback to `SpUtil` and in-memory caching. Guarantees that token writes, reads, and deletes never throw `UnsupportedError` on Flutter Web served in non-HTTPS environments (where Web Crypto `window.crypto.subtle` is unavailable).
+- **Network Resilience**: Strengthened `ErrorInterceptor` to handle plain-text and HTML response bodies (such as Nginx `413 Request Entity Too Large`) without throwing `TypeError`.
+- **Testing**: Added unit test coverage for `SecureStorageUtil` fallback mechanism (`secure_storage_util_test.dart`) and `ErrorInterceptor` plain-text/HTML parsing.
+
 ## 0.0.52
 - **APM Monitoring**: Updated `FrameMonitor` to safely check for test environments by guarding `Platform.environment` access with a `kIsWeb` check, preventing crashes on web platforms.
 - **Device Information**:

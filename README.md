@@ -76,6 +76,7 @@ lib/
 ### 2. Network foundation
 
 - `ApiClient` provides a multi-interceptor Dio setup with trace propagation, auth injection, refresh retry queueing, and error mapping.
+- `ErrorInterceptor` handles both structured JSON, plain text, and HTML gateway error pages (such as Nginx `413 Request Entity Too Large`) safely without throwing `TypeError`.
 - `BaseRepository.safeCall()` standardizes repository error handling with `Either<Failure, T>`.
 - `LocalMockServer` serves local mock assets with `Accept-Language` header parsing for localized mock file auto-routing (`_zh.json`, `_ja.json`).
 
@@ -89,7 +90,8 @@ lib/
 
 - `LogManager` stores structured log entries for in-app consumption.
 - `CrashManager` provides local crash persistence and Safe Mode reset hooks.
-- `SpUtil`, `SecureStorageUtil`, `eventBus`, validators, and package/device info helpers are included.
+- `SecureStorageUtil` provides encrypted storage with automatic multi-tier fallback (`FlutterSecureStorage` -> `SpUtil` -> In-Memory Map) for non-HTTPS Web environments.
+- `SpUtil`, `eventBus`, validators, and package/device info helpers are included.
 
 ## Current Limitations
 
