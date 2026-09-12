@@ -4,40 +4,57 @@ import 'package:flutter/material.dart';
 
 import '../core.dart';
 
-/// Builder function to create a page for a specific route path.
+/// Builder function to create a page widget for a specific route path.
 typedef RoutePageBuilder = Widget Function();
 
+/// Converter delegate that deserializes a raw query parameter [map]
+/// into a strongly-typed routing arguments object of type [T].
+/// This enables full decoupling between ListenCore and host application DTOs.
 typedef ArgumentConverter<T> = T Function(Map<String, dynamic> map);
 
-/// Global configuration for route interception and app-wide navigation settings.
+/// Global configuration and registry for route interception, authentication hooks,
+/// route paths, and supported custom URI schemes.
 class AppNavConfig {
   AppNavConfig._();
 
+  /// Global navigator key allowing context-less programmatic navigation from anywhere in the app.
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  /// Convenience getter for the active [BuildContext] associated with the global navigator.
   static BuildContext? get context => navigatorKey.currentContext;
 
+  /// Function delegate to check if the current user session is an unauthenticated guest.
   static bool Function()? isGuestCheck;
 
+  /// Callback delegate to trigger the login flow when an unauthenticated user accesses a protected route.
   static Future<bool> Function(BuildContext context)? onLoginRedirect;
 
+  /// Optional callback invoked upon successful authentication.
   static void Function()? onLoginSuccessCallback;
 
+  /// Optional callback delegate to show an interactive login confirmation dialog.
   static Future<bool> Function(BuildContext context)? onShowLoginDialogCallback;
 
+  /// Registry mapping route path strings to their corresponding [RoutePageBuilder] factories.
   static final Map<String, RoutePageBuilder> _routeRegistry = {};
 
+  /// Registered custom URI schemes (e.g., 'listenportfolio', 'listen', 'myapp')
+  /// stripped during deep link resolution.
   static final List<String> _schemes = [];
   static List<String> get schemes => _schemes;
 
+  /// List of registered route interceptors executed prior to route navigation.
   static final List<RouteInterceptor> _interceptors = [];
   static List<RouteInterceptor> get interceptors => _interceptors;
 
+  /// Registers additional route interceptors and sorts them in ascending order of [RouteInterceptor.priority].
   static void registerInterceptors(List<RouteInterceptor> interceptors) {
     _interceptors.addAll(interceptors);
     _interceptors.sort((a, b) => a.priority.compareTo(b.priority));
   }
 
+  /// Central registration entrypoint for configuring routing behaviors, authentication hooks,
+  /// route table mappings, and custom URI schemes.
   static void register({
     required bool Function() isGuest,
     required Future<bool> Function(BuildContext context) onLogin,
@@ -61,6 +78,7 @@ class AppNavConfig {
     }
   }
 
+  /// Look up the registered page builder factory for the specified route [path].
   static RoutePageBuilder? getBuilder(String path) => _routeRegistry[path];
 }
 
@@ -69,6 +87,10 @@ class AppNav {
 
   static final Map<Type, ArgumentConverter<dynamic>> _argumentConverters = {};
 
+  /// Registers a converter function [converter] for a specific target type [T].
+  /// When deep links pass query parameters as a [Map<String, dynamic>],
+  /// [getArgs<T>()] automatically delegates to this converter to construct
+  /// a type-safe arguments instance.
   static void registerArgumentConverter<T>(ArgumentConverter<T> converter) {
     _argumentConverters[T] = converter;
   }
@@ -152,6 +174,15 @@ class AppNav {
     return _resolveRoute<dynamic>(name, settings.arguments);
   }
 
+  /// Navigates to a target route (either a [String] path or a [Widget] instance).
+  ///
+  /// - [target]: The target route path (e.g., '/settings', 'listen://home?tab=aboutMe')
+  ///   or a direct [Widget] instance.
+  /// - [needLogin]: When true, executes authentication interceptors before pushing.
+  /// - [arguments]: Optional custom arguments object or [Map] to pass to the route.
+  /// - [replaceIfExists]: When true, if the target route is already the top-most
+  ///   active route, replaces it via [pushReplacement] to re-trigger argument processing.
+  ///   When false (default), ignores redundant duplicate navigations to prevent UI flickers.
   static Future<T?>? to<T extends Object?>(
     dynamic target, {
     bool needLogin = false,
@@ -212,6 +243,11 @@ class AppNav {
     return completer.future;
   }
 
+  /// Navigates to a target route and replaces the current top-most route in the stack.
+  ///
+  /// - [target]: Route path [String] or [Widget] instance.
+  /// - [needLogin]: If true, enforces authentication interceptor checks.
+  /// - [arguments]: Optional arguments to attach to the replaced route.
   static Future<T?>? off<T extends Object?>(dynamic target, {bool needLogin = false, Object? arguments}) {
     final completer = Completer<T?>();
 
@@ -252,8 +288,10 @@ class AppNav {
   }
 
   /// Navigates to a target and removes all previous routes from the stack.
-  /// If [isReplace] is true, creates a new route and replaces the entire stack.
-  /// If [isReplace] is false, pops until the target route is reached (target must exist in stack).
+  ///
+  /// - [isReplace]: If true, creates a new route and replaces the entire stack (`pushAndRemoveUntil`).
+  ///   If false, pops the stack backwards until the target route is reached (target must already exist).
+  /// - [needLogin]: If true, checks authentication status before executing stack manipulation.
   static Future<T?>? offAll<T extends Object?>(
     dynamic target, {
     bool needLogin = false,
@@ -309,8 +347,11 @@ class AppNav {
     return completer.future;
   }
 
+  /// Pops the top-most route off the navigator, optionally passing a [result] back to the previous route.
   static void back<T extends Object?>([T? result]) => AppNavConfig.navigatorKey.currentState?.pop(result);
 
+  /// Strips any registered custom scheme prefix from [target] (e.g., 'listen://settings' -> '/settings').
+  /// Ensures the returned path consistently has a leading slash for route matching.
   static String _stripScheme(String target) {
     var path = target;
     for (final scheme in AppNavConfig.schemes) {
@@ -326,7 +367,8 @@ class AppNav {
     return path;
   }
 
-  /// Internal helper to resolve target and extract URI parameters into RouteSettings.
+  /// Internal helper to resolve [target] into a Flutter [Route], parsing URI query parameters
+  /// into RouteSettings and wrapping page creation with Zone-based APM tracking.
   static Route<T>? _resolveRoute<T>(dynamic target, Object? arguments) {
     if (target is Widget) {
       return MaterialPageRoute<T>(
@@ -364,6 +406,8 @@ class AppNav {
     return null;
   }
 
+  /// Builds a [MaterialPageRoute] for the given [name], wrapping page construction
+  /// inside [ZoneManager.runPage] to measure build duration and attach trace context.
   static Route<T>? _buildPageRoute<T>(String name, Object? args) {
     final builder = AppNavConfig.getBuilder(name);
     if (builder == null) return null;
@@ -374,6 +418,7 @@ class AppNav {
     );
   }
 
+  /// Executes all registered interceptors sequentially. Returns false if any interceptor halts navigation.
   static Future<bool> _runInterceptors({
     required String? routeName,
     required Object? arguments,
@@ -392,6 +437,7 @@ class AppNav {
     return true;
   }
 
+  /// Helper to trigger the login interception flow explicitly without navigating to a specific target.
   static void tryLogin({required VoidCallback onSuccess, VoidCallback? onFail, bool needLogin = true}) {
     _runInterceptors(routeName: null, arguments: null, needLogin: needLogin)
         .then((shouldProceed) {
@@ -408,7 +454,8 @@ class AppNav {
   }
 }
 
-/// Internal observer inheriting from RouteObserver to support both arguments syncing and RouteAware lifecycle.
+/// Internal observer inheriting from RouteObserver to synchronize active route tracking,
+/// maintain global [AppNav.currentRoute] and [AppNav.currentRouteName], and notify listeners.
 class _AppNavObserver extends RouteObserver<ModalRoute<void>> {
   void _updateRoute(Route<dynamic>? route) {
     AppNav._currentRoute = route;

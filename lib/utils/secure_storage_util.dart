@@ -1,8 +1,22 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'sp_util.dart';
 
-/// Utility class for FlutterSecureStorage to handle sensitive data encryption.
-/// All methods are asynchronous as they involve disk I/O and encryption.
+/// Utility class providing encrypted key-value persistence with multi-tier fallback.
+///
+/// ### Architecture & Security Rationale:
+/// - **Native Platforms (iOS/macOS/Android)**: Backed by [FlutterSecureStorage], which
+///   leverages iOS Keychain and Android Keystore with AES/RSA hardware-backed encryption.
+/// - **Web Contexts & Insecure Origins**: Flutter Web requires `window.crypto.subtle`
+///   for web-based encryption, which modern browsers strictly restrict to Secure Contexts
+///   (`https://` or `localhost`). When deployed over plain `http://` (common in staging,
+///   internal LANs, or private cloud previews), Web Crypto throws an uncatchable JS error
+///   or rejected promise that would freeze/crash the authentication pipeline.
+/// - **Multi-Tier Fallback Mechanism**:
+///   1. **Tier 1 (Primary)**: [FlutterSecureStorage] (Hardware-backed / WebCrypto).
+///   2. **Tier 2 (Secondary)**: [SpUtil] (Persistent LocalStorage / SharedPreferences prefixed with `__sec_`).
+///   3. **Tier 3 (Tertiary / Memory)**: In-memory hash map [_memoryFallback] for synchronous resilience.
+///
+/// All public methods are asynchronous as they involve disk I/O and encryption primitives.
 class SecureStorageUtil {
   static FlutterSecureStorage? _storage;
   static String _prefix = '';

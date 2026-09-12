@@ -285,28 +285,28 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     return _cancelToken;
   }
 
-  /// Subscribes to an event from the [EventBus] and manages its lifecycle.
+  /// Subscribes to an event from the global [EventBus] and automatically tracks its lifecycle.
   ///
-  /// This method provides a convenient way to subscribe to events
-  /// without having to manually manage the subscription lifecycle.
-  /// The subscription will be automatically cancelled in [onDispose].
+  /// ### Memory Leak Defense:
+  /// Subscribing to a singleton [EventBus] normally risks severe memory leaks if the subscription
+  /// is not cancelled upon ViewModel disposal. This method automatically registers the resulting
+  /// [StreamSubscription] into [_eventSubscriptions], which is guaranteed to be cancelled in
+  /// [_performRealDispose] when the ViewModel (or its hosting Riverpod provider) is destroyed.
   ///
   /// [onData] is the callback function that handles the event.
   /// [key] is an optional filter to listen only for events with a specific key.
-  /// [sticky] if true, emits the matching cached event immediately upon subscription.
+  /// [sticky] if true, emits any matching cached sticky event immediately upon subscription.
   /// [where] is additional custom filtering logic.
   ///
   /// **Example:**
   /// ```dart
-  /// subscribeEvent<UserUpdatedEvent>((event) {
-  ///   updateState(state.copyWith(user: event.user));
-  /// });
-  ///
-  /// subscribeEvent<SystemEvent>((event) {
-  ///   if (event.type == SystemEventType.logout) {
-  ///     emitEffect(LogoutEffect());
-  ///   }
-  /// }, key: 'system_events');
+  /// subscribeEvent<CommonEvent<Uri>>(
+  ///   (event) {
+  ///     if (event.data != null) handleIntent(HomeIntent.handleDeepLink(event.data!));
+  ///   },
+  ///   key: DeepLinkManager.deepLinkEventKey,
+  ///   sticky: true,
+  /// );
   /// ```
   @protected
   void subscribeEvent<T extends BaseEvent>(
@@ -319,10 +319,17 @@ mixin ViewModelMixin<S extends BaseState, I extends BaseIntent> implements BaseV
     _eventSubscriptions.add(sub);
   }
 
+  /// Single UI Binder hook for connecting the active Page Widget to the ViewModel's effect stream.
+  ///
+  /// ### Ghost Dialog & Duplicate Effect Prevention:
+  /// When a route transition occurs (e.g. `pushReplacement` or fast route popping taking ~300ms),
+  /// the exiting page and the entering page may momentarily coexist while sharing a reused ViewModel.
+  /// To guarantee that only the currently focused, active page consumes UI effects, this method
+  /// **synchronously cancels** any prior page's [_activeEffectSubscription] before attaching the new handler.
+  /// This enforces a strict **Single UI Binder (1-to-1)** contract, ensuring modal dialogs or toasts
+  /// are never displayed twice.
   @override
   StreamSubscription<BaseEffect> onBindEffect(void Function(BaseEffect effect) handler) {
-    // Automatically cancel any previous page's subscription to prevent duplicate side-effects
-    // when a page route is replaced or transitioned (and the view model is reused).
     _activeEffectSubscription?.cancel();
     final sub = effectStream.listen(handler);
     _activeEffectSubscription = sub;

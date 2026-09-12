@@ -141,24 +141,32 @@ class _TracePrinter extends LogPrinter {
 /// - Maintains chronological order
 /// - Integrates with in-app log viewer
 class _LogManagerOutput extends LogOutput {
+  /// Routes formatted log events into the internal [LogManager] circular buffer.
+  ///
+  /// ### Implementation Note (Trace Correlation):
+  /// Note that `event.origin.message` retains the original raw payload passed to `appLogger`.
+  /// Because [_TracePrinter] only affects the [PrettyPrinter] terminal formatting pipeline,
+  /// we explicitly re-extract [ZoneManager.currentTraceId] here to prepend it to the in-app
+  /// [LogManager] storage. This ensures the in-app `LogOverlay` diagnostic view displays
+  /// matching correlation IDs alongside console logs.
   @override
   void output(OutputEvent event) {
-    // IMPORTANT: event.origin.message is the ORIGINAL message passed to appLogger.i/e.
-    // It does NOT include modifications made by _TracePrinter.
     final rawMessage = event.origin.message.toString();
     if (rawMessage.isEmpty) return;
 
-    // We must re-fetch the traceId here for the LogManager.
+    // Retrieve active distributed trace ID from Dart Zone context.
     final traceId = ZoneManager.currentTraceId;
 
-    // Format: [traceId] Message
-    // This will now show up correctly in the LogOverlayManager UI.
+    // Standardized log entry header: [traceId] Message
     final formattedMessage = '[$traceId]\n $rawMessage';
 
     LogManager.addLog(formattedMessage, level: _mapLevel(event.level));
   }
 
-  // Convert external Logger levels to internal LogManager levels
+  /// Maps third-party [Logger] severity levels to the internal [LogLevel] domain enum.
+  ///
+  /// Ensures consistent categorization inside the APM UI regardless of whether
+  /// the underlying logging library is replaced in future refactorings.
   LogLevel _mapLevel(Level level) {
     if (level == Level.error || level == Level.fatal) return LogLevel.error;
     if (level == Level.warning) return LogLevel.warning;

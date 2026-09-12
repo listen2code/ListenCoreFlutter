@@ -24,8 +24,21 @@ class ZonePerfRecord {
   });
 }
 
-/// Manages data stored in the current [Zone].
-/// This handles distributed tracing, request cancellation, and performance profiling.
+/// Distributed Tracing, Execution Context, and Asynchronous Profiling Manager.
+///
+/// Architecture & Design Philosophy:
+/// - **Thread-Local Storage (TLS) in Async Dart**: Because Dart execution is single-threaded and
+///   cooperatively scheduled via the Event Loop, traditional OS thread-local storage is insufficient
+///   for tracking asynchronous request lifecycles.
+/// - **Zero Parameter Pollution**: Rather than manually threading `traceId` through hundreds of
+///   ViewModel methods, Repository signatures, and ApiClient calls, [ZoneManager] leverages Dart's
+///   [Zone] specification ([runZoned]).
+/// - **Context Inheritance**: Microtasks, Timers, and [Future] continuations automatically inherit
+///   the parent Zone's `zoneValues`, preserving the active `traceId`, [CancelToken], and [_PerfTrace]
+///   across complex asynchronous call graphs.
+/// - **Full-Stack Correlation**: The active `traceId` is extracted by `ZoneContextInterceptor` and
+///   injected into outgoing HTTP `X-Trace-Id` headers, allowing frontend logs to stitch seamlessly
+///   with Spring Boot backend SLF4J MDC logs.
 class ZoneManager {
   ZoneManager._();
 
@@ -60,20 +73,22 @@ class ZoneManager {
   /// Stream emitting performance trace reports upon zone completion.
   static Stream<ZonePerfRecord> get onPerfTrace => _perfController.stream;
 
-  /// Gets the current Trace ID from the Zone.
+  /// Retrieves the active distributed Trace ID from the current [Zone].
+  ///
+  /// Returns `no-trace-id` if executed outside of an instrumented zone.
   static String get currentTraceId => Zone.current[_traceKey] ?? _noTraceId;
 
-  /// Gets the current [CancelToken] from the Zone.
+  /// Retrieves the contextual [CancelToken] bound to the current [Zone], if any.
   static CancelToken? get currentCancelToken => Zone.current[_cancelTokenKey];
 
   /// Internal helper to get performance tracker.
   static _PerfTrace? get _perf => Zone.current[_perfKey];
 
-  /// Marks a specific stage in the current execution flow.
-  /// It records the duration since the last mark.
+  /// Marks a specific stage milestone in the current execution flow.
+  /// Records differential latency since the preceding mark.
   static void mark(String stage) => _perf?._mark(stage);
 
-  /// Specialized runner for Page Rendering performance tracking.
+  /// Specialized runner for tracking Page Rendering lifecycle and first-frame rendering metrics.
   static Widget runPage(String pageName, Widget Function() builder) {
     final String id = "$_prefixPage$pageName-${const Uuid().v4().substring(0, _shortIdLength)}";
     final perf = _PerfTrace();
@@ -81,7 +96,10 @@ class ZoneManager {
     return _ZonePageWrapper(id: id, perf: perf, builder: builder);
   }
 
-  /// Runs the [body] in a new Zone with a Trace ID and performance tracking.
+  /// Runs the provided [body] inside an isolated [Zone] with an assigned Trace ID and performance stopwatch.
+  ///
+  /// Automatically captures asynchronous [Future] outcomes, logging structured performance
+  /// summaries on success or errors on unhandled exceptions.
   static T run<T>(
     T Function() body, {
     String? traceId,

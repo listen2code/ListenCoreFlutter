@@ -3,6 +3,27 @@ import 'package:dio/dio.dart';
 import '../../core.dart';
 
 /// Interceptor that handles automatic access token injection, token refresh, and request queueing for 401 Unauthorized errors.
+///
+/// ### Authentication Architecture & Lifecycle:
+/// 1. **Token Injection (`onRequest`)**:
+///    - Evaluates whether the endpoint requires authentication (`kNoAuthKey` or `visitorPaths`).
+///    - Injects the Bearer access token stored in memory/keystore via [ApiClient.delegate.onInjectAuthHeader].
+///
+/// 2. **Silent Refresh & Concurrent Queueing (`onError`)**:
+///    - Detects HTTP 401 Unauthorized responses.
+///    - If a refresh flow is already underway, queues pending requests using [Completer] objects.
+///    - Initiates a single token refresh request via [ApiClient.delegate.onRefreshToken].
+///    - Upon success, flushes the queued requests and retries the original request with the fresh token.
+///
+/// 3. **Passkey / FIDO2 Alignment**:
+///    - In FIDO2/Passkey passwordless authentication flows, hardware-backed cryptographic assertions
+///      replace shared password secrets at initial login.
+///    - The backend returns standard JWT access and refresh token pairs.
+///    - Once acquired, the lifecycle of token injection, automatic refresh, and expiration fallback
+///      is uniformly governed by this [AuthInterceptor].
+///    - If refresh fails completely (e.g., refresh token expired or revoked), [AuthInterceptor]
+///      triggers session termination, redirecting the user to re-authenticate via Passkey (Face ID/Touch ID)
+///      or password fallback.
 class AuthInterceptor extends Interceptor {
   static const String _tag = LogManager.authInterceptorTag;
   static const String _kIsRefreshedKey = 'is_refreshed';
@@ -69,10 +90,13 @@ class AuthInterceptor extends Interceptor {
           _clearQueueWithError(e);
         }
       } else {
+        // Concurrency defense: Another request is already performing token refresh.
+        // Enqueue this request's Completer into the pending queue and await completion.
         appLogger.i('$_tag: [QUEUE] -> Refresh in progress, queueing: ${err.requestOptions.uri}');
         final completer = Completer<void>();
         _refreshQueue.add(completer);
         try {
+          // Asynchronously suspends until the lead request succeeds and calls c.complete()
           await completer.future;
           final options = err.requestOptions.copyWith();
           options.extra[_kIsRefreshedKey] = true;
@@ -80,6 +104,7 @@ class AuthInterceptor extends Interceptor {
           final response = await ApiClient.dio.fetch(options);
           return handler.resolve(response);
         } catch (_) {
+          // If the token refresh failed, forward the original 401 error to the caller
           return handler.next(err);
         }
       }
@@ -87,6 +112,10 @@ class AuthInterceptor extends Interceptor {
     return handler.next(err);
   }
 
+  /// Atomically drains and resolves all queued requests upon successful token refresh.
+  ///
+  /// Takes a defensive snapshot copy of the queue before clearing to prevent
+  /// concurrent modification exceptions if completion handlers enqueue new operations.
   void _clearQueueWithComplete() {
     final queue = List<Completer<void>>.from(_refreshQueue);
     _refreshQueue.clear();
@@ -95,6 +124,7 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
+  /// Atomically drains and rejects all queued requests with the specified error.
   void _clearQueueWithError(Object error) {
     final queue = List<Completer<void>>.from(_refreshQueue);
     _refreshQueue.clear();

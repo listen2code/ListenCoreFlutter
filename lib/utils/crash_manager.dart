@@ -20,6 +20,14 @@ class SafeModeConfig {
   });
 }
 
+/// Comprehensive Crash Management and Self-Healing Engine.
+///
+/// Responsibilities:
+/// 1. **Breadcrumb & Diagnostic Persistence**: Writes fatal exceptions, active [ZoneManager] Trace IDs,
+///    current route names, and reverse-chronological in-memory log history to local disk.
+/// 2. **Circuit Breaker Safe Mode**: Tracks rapid consecutive cold-start crashes within a sliding
+///    time window (default: 3 crashes within 30 seconds). Upon crossing the threshold, triggers
+///    an emergency safety reset callback to clear corrupted caches and recover the application.
 class CrashManager {
   CrashManager._();
 
@@ -29,18 +37,27 @@ class CrashManager {
 
   static SafeModeConfig? _config;
 
-  /// Initialize storage configuration
+  /// Initializes the storage key mapping for persistent crash timestamps.
   static void initStorageConfig(StorageConfig config) {
     _keyCrashTimestamps = config.rapidCrashTimestampsKey;
   }
 
-  /// Initializes the CrashManager with Safe Mode settings.
+  /// Configures the CrashManager with Safe Mode threshold settings and reset hooks.
   static void init(SafeModeConfig config) {
     _config = config;
   }
 
-  /// Saves current logs and error details to a local file.
-  /// Also checks for rapid consecutive crashes to trigger a safety reset.
+  /// Persists full diagnostic crash details and recent log breadcrumbs to local storage.
+  ///
+  /// Capture Anatomy:
+  /// - System Wall-Clock Timestamp
+  /// - Active Distributed [ZoneManager.currentTraceId]
+  /// - Active Navigator Route ([AppNav.currentRouteName])
+  /// - Structured Exception Summary / FlutterErrorDetails
+  /// - Complete Call Stack Trace
+  /// - In-Memory Rolling Log History (100 recent entries from [LogManager])
+  ///
+  /// Also increments the consecutive crash counter to evaluate Safe Mode activation.
   static Future<String?> saveCrashLog(Object error, StackTrace stack) async {
     // 1. Log the crash timestamp for rapid crash detection
     await _recordCrashTimestamp();
@@ -79,7 +96,12 @@ class CrashManager {
     }
   }
 
-  /// Records the current crash time and checks if we need to perform a safety reset.
+  /// Records the crash epoch timestamp and filters the historical list against the sliding time window.
+  ///
+  /// Mathematical Sliding Window Model:
+  /// - `windowStart = now - timeWindow`
+  /// - Discards timestamps older than `windowStart` to avoid penalizing infrequent, spaced-out errors.
+  /// - If `survivingTimestamps.length >= rapidCrashThreshold`, trips the circuit breaker.
   static Future<void> _recordCrashTimestamp() async {
     if (_config == null) return;
 
@@ -106,7 +128,12 @@ class CrashManager {
     }
   }
 
-  /// Clears crash history and triggers the externally provided reset logic.
+  /// Executes emergency recovery logic when rapid crash loops are detected.
+  ///
+  /// CRITICAL ARCHITECTURAL SAFEGUARD:
+  /// Clears the crash timestamp history *before* invoking [SafeModeConfig.onReset].
+  /// If the reset callback itself encounters an exception, clearing the history first
+  /// breaks infinite recursive reset loops that would permanently freeze the application.
   static Future<void> _performSafetyReset() async {
     appLogger.e('RAPID CRASH DETECTED! Triggering safety reset...');
 

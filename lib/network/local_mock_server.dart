@@ -5,14 +5,33 @@ import 'package:flutter/services.dart';
 
 import '../core.dart';
 
-/// A lightweight HTTP server running inside the app to provide real network responses.
-/// Path resolution logic is synchronized with tools/api/api.js structure.
+/// An in-process, lightweight HTTP server running inside the app process on `localhost:9999`.
+///
+/// ### Architecture & Development Workflow Rationale:
+/// Traditional frontend development is frequently blocked by backend development velocity,
+/// unstable network environments, or complex sandbox deployment credentials.
+///
+/// [LocalMockServer] solves this by embedding an RFC-compliant HTTP server within the Dart VM:
+/// 1. **Zero-Backend Offline Development**: Serves real HTTP responses parsed directly
+///    from assets (`assets/mock/`), enabling full UI development without cloud dependency.
+/// 2. **Real Network Stack Exercise**: Traffic flows through the full [Dio] interceptor pipeline,
+///    HTTP socket serialization, and JSON deserialization, testing real production network behaviors.
+/// 3. **Distributed Trace Correlation**: Extracts incoming `X-Trace-Id` headers and wraps request
+///    handling inside a scoped [ZoneManager] zone, ensuring server and client logs share identical
+///    trace IDs inside the in-app APM `LogOverlay`.
+/// 4. **Dynamic In-Memory State & Multi-Language**: Dynamically mutates user state for avatar uploads
+///    and routes localized assets based on `Accept-Language` (`zh`, `ja`) with graceful fallback.
 class LocalMockServer {
+  /// Internal [HttpServer] socket handle bound to loopback IPv4.
   static HttpServer? _server;
+
+  /// Default loopback port number (9999).
   static int port = 9999;
+
+  /// Volatile in-memory cache simulating database persistence across mutations (e.g. avatar upload).
   static Map<String, dynamic>? _mockedUserBody;
 
-  // Supported image extensions and their corresponding ContentTypes
+  /// Supported static image extensions and their corresponding MIME `Content-Type`.
   static Map<String, String> _imageExtensions = {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -22,11 +41,13 @@ class LocalMockServer {
     '.svg': 'image/svg+xml',
   };
 
-  // Configuration
+  /// Artificial network latency to realistically exercise UI loading indicators and skeletons.
   static Duration _networkLatency = const Duration(seconds: 1);
+
+  /// Base asset path prefix holding mock JSON structures.
   static String _assetsBasePath = 'assets/mock';
 
-  /// Initialize configuration
+  /// Initializes server configuration parameters from [config].
   static void initConfig(MockServerConfig config) {
     port = config.port;
     _imageExtensions = config.imageExtensions;
@@ -34,7 +55,11 @@ class LocalMockServer {
     _assetsBasePath = config.assetsBasePath;
   }
 
-  /// Starts the server on localhost:9999
+  /// Binds an HTTP server to `127.0.0.1:9999` and listens for incoming client requests.
+  ///
+  /// **Trace ID Binding**:
+  /// Reads `X-Trace-Id` from request headers and executes `_handleRequest` inside a scoped
+  /// [ZoneManager.run] zone so all log statements emitted by the server reflect the client's trace context.
   static Future<void> start() async {
     _mockedUserBody = null;
     if (_server != null) return;
@@ -55,13 +80,23 @@ class LocalMockServer {
     }
   }
 
-  /// Stops the running server
+  /// Gracefully terminates the running HTTP server and releases socket resources.
   static Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
     appLogger.i('MockServer: Local Mock Server stopped');
   }
 
+  /// Core dispatch loop processing incoming HTTP requests.
+  ///
+  /// **Processing Pipeline**:
+  /// 1. Decodes incoming HTTP headers, URL query parameters, and UTF-8 JSON request body.
+  /// 2. Emits a combined, indented audit log to [appLogger] (captured by terminal and APM `LogOverlay`).
+  /// 3. Injects simulated network latency ([_networkLatency]) to test client-side async UI states.
+  /// 4. Serves binary image files if matching `_imageExtensions` under `/images/`.
+  /// 5. Handles dynamic state mutation endpoints (e.g. `POST /v1/user/upload-avatar` updates `_mockedUserBody`).
+  /// 6. Parses `Accept-Language` header to prioritize localized assets (e.g. `projects_zh.json` -> `projects.json`).
+  /// 7. Loads JSON payload from [rootBundle] and streams HTTP 200 response (or returns HTTP 404).
   static Future<void> _handleRequest(HttpRequest request) async {
     final method = request.method.toLowerCase();
     final uriPath = request.uri.path;
@@ -83,6 +118,8 @@ class LocalMockServer {
     }
 
     // 3. Combined Request Log (Method, Path, Headers, Query, Body)
+    // Formats request metadata into an indented, human-readable audit log.
+    // Captured by both terminal stdout and the in-app APM LogOverlay.
     final reqBuffer = StringBuffer();
     reqBuffer.writeln('MockServer: >>> [${request.method.toUpperCase()}] $uriPath');
     reqBuffer.writeln('Request Headers: ${const JsonEncoder.withIndent('  ').convert(reqHeaders)}');
@@ -99,10 +136,17 @@ class LocalMockServer {
     }
     appLogger.w(reqBuffer.toString().trim());
 
-    // Simulate network latency
+    // Artificial network latency simulation:
+    // Deliberately suspends request processing for [_networkLatency] (default: 1s)
+    // to thoroughly exercise UI loading states, shimmer skeletons, and debounce guards.
     await Future.delayed(_networkLatency);
 
-    // --- ADDED: Handle Static Resources (Images) ---
+    // -------------------------------------------------------------------------
+    // Handler 1: Static Binary Image Asset Streaming
+    // -------------------------------------------------------------------------
+    // Detects requests directed at static media assets (e.g. `/v1/images/project1.jpg`).
+    // Maps the incoming URL to `assets/mock/images/...`, reads the raw bytes from
+    // [rootBundle], sets the appropriate MIME Content-Type, and streams the binary data.
     if (uriPath.contains('/images/')) {
       final ext = _imageExtensions.keys.firstWhere(
         (e) => uriPath.toLowerCase().endsWith(e),
@@ -111,7 +155,7 @@ class LocalMockServer {
 
       if (ext.isNotEmpty) {
         // Map URL: /v1/images/project1.jpg -> assets/mock/images/project1.jpg
-        // Stripping the version prefix if present to match the physical directory structure
+        // Strips the API version prefix (e.g. `/v1`) to match the physical directory layout
         final relativePath = uriPath.replaceFirst(RegExp(r'^/v\d+'), '');
         final assetPath = '$_assetsBasePath$relativePath';
 
@@ -126,19 +170,28 @@ class LocalMockServer {
           await request.response.close();
           return;
         } catch (e) {
-          // If image not found in assets, we fall through to JSON resolution or 404 handler
+          // Fall through to JSON resolution or 404 handler if asset is not found
           appLogger.e('MockServer: Resource not found in assets: $assetPath');
         }
       }
     }
 
-    // --- ADDED: Handle Dynamic Mock State for User Avatar Upload ---
+    // -------------------------------------------------------------------------
+    // Handler 2: Dynamic In-Memory State Mutation (User Profile & Avatar)
+    // -------------------------------------------------------------------------
+    // Simulates dynamic state persistence without an on-disk database.
+    // When the client uploads an avatar via `POST /v1/user/upload-avatar`:
+    // 1. Reads the base `user.json` asset as the canonical user baseline;
+    // 2. Patches `avatarUrl` with the newly uploaded Base64 string;
+    // 3. Caches the updated payload into [_mockedUserBody] in memory;
+    // 4. Subsequent `GET /v1/user` requests return this mutated state, achieving
+    //    a complete CRUD round-trip simulation across the offline app lifecycle.
     if (uriPath == '/v1/user/upload-avatar' && method == 'post') {
       try {
         final Map<String, dynamic> requestBody = jsonDecode(rawBody);
         final String? avatarBase64 = requestBody['avatar'];
         if (avatarBase64 != null) {
-          // Load base user.json
+          // Load baseline user profile from static asset
           final String baseUserJson = await rootBundle.loadString('assets/mock/v1/get/user.json');
           final Map<String, dynamic> userMap = jsonDecode(baseUserJson);
           if (userMap['body'] != null) {
@@ -173,14 +226,18 @@ class LocalMockServer {
       }
     }
 
-    // 4. Identify version directory (e.g., v1)
+    // -------------------------------------------------------------------------
+    // Handler 3: Localized Static JSON Routing with Graceful Fallback
+    // -------------------------------------------------------------------------
+    // 1. Extracts API version prefix (e.g., "v1" from "/v1/projects").
     String versionDir = "";
     if (pathParts.isNotEmpty && RegExp(r'^v\d+$').hasMatch(pathParts[0])) {
       versionDir = pathParts[0];
       pathParts.removeAt(0);
     }
 
-    // Read and parse accept-language to support localized mock files
+    // 2. Inspects `Accept-Language` header to determine client language preference.
+    // Extracts primary language tag (`zh` or `ja`). Defaults to English (empty suffix).
     final acceptLang = request.headers.value('accept-language')?.split(',').first.trim().toLowerCase() ?? '';
     String langSuffix = '';
     if (acceptLang.startsWith('zh')) {
@@ -189,7 +246,9 @@ class LocalMockServer {
       langSuffix = 'ja';
     }
 
-    // 5. Build candidate asset paths matching api.js rules
+    // 3. Generates candidate asset paths ordered by specificity:
+    //    Priority 1: Localized sub-resource (e.g. `v1/get/projects_zh.json`)
+    //    Priority 2: Fallback non-localized resource (e.g. `v1/get/projects.json`)
     List<String> candidatePaths = [];
     if (pathParts.length > 1) {
       final baseSingle = _buildPath(versionDir, method, [pathParts[0]]);
@@ -207,7 +266,7 @@ class LocalMockServer {
     String? jsonData;
     String? matchedPath;
 
-    // 6. Search for the JSON file in app assets
+    // 4. Sequentially probes rootBundle assets until the first match is loaded.
     for (final path in candidatePaths) {
       try {
         jsonData = await rootBundle.loadString(path);
@@ -216,7 +275,7 @@ class LocalMockServer {
       } catch (_) {}
     }
 
-    // 7. Send Response and Log (Status, Asset Path, Headers, Body)
+    // 5. Streams HTTP 200 response with payload, or falls through to 404.
     try {
       if (jsonData != null) {
         request.response
@@ -253,7 +312,7 @@ class LocalMockServer {
     }
   }
 
-  /// Helper to join path segments safely
+  /// Helper to safely construct normalized asset path segments.
   static String _buildPath(String version, String method, List<String> parts) {
     final segments = [_assetsBasePath, if (version.isNotEmpty) version, method, ...parts];
     return '${segments.join('/')}.json'.replaceAll('//', '/');
